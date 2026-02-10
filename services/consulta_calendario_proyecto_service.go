@@ -24,7 +24,7 @@ func GetCalendarByProjectId(idCalendario int) (interface{}, error) {
 			AplicaExtension := calendario["AplicaExtension"].(bool)
 			if AplicaExtension {
 				DependenciaParticularId := calendario["DependenciaParticularId"].(string)
-				if DependenciaParticularId != "{}" || DependenciaParticularId != "" {
+				if DependenciaParticularId != "{}" && DependenciaParticularId != "" {
 					var listaProyectos map[string][]int
 					json.Unmarshal([]byte(DependenciaParticularId), &listaProyectos)
 					for _, Id := range listaProyectos["proyectos"] {
@@ -94,7 +94,7 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 							AplicaExtension := calendario["AplicaExtension"].(bool)
 							if AplicaExtension {
 								DependenciaParticularId := calendario["DependenciaParticularId"].(string)
-								if DependenciaParticularId != "{}" || DependenciaParticularId != "" {
+								if DependenciaParticularId != "{}" && DependenciaParticularId != "" {
 									var listaProyectos map[string][]int
 									json.Unmarshal([]byte(DependenciaParticularId), &listaProyectos)
 									for _, Id := range listaProyectos["proyectos"] {
@@ -138,7 +138,7 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 							if errEvento == nil && fmt.Sprintf("%v", calendarioEventos) != "[map[]]" {
 
 								for _, Evento := range calendarioEventos {
-									nombreEvento := strings.ToUpper(fmt.Sprintf(Evento["Nombre"].(string)))
+									nombreEvento := strings.ToUpper(fmt.Sprintf("%s", Evento["Nombre"].(string)))
 									if strings.Contains(nombreEvento, "INSCRIPCI") && strings.Contains(nombreEvento, "ASPIRANTE") && strings.Contains(nombreEvento, "PAGO") {
 
 										var aplicaParticular bool = false
@@ -174,7 +174,7 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 								}
 
 								for _, Evento := range calendarioEventos {
-									nombreEvento := strings.ToUpper(fmt.Sprintf(Evento["Nombre"].(string)))
+									nombreEvento := strings.ToUpper(fmt.Sprintf("%s", Evento["Nombre"].(string)))
 									if strings.Contains(nombreEvento, "INSCRIPCI") && strings.Contains(nombreEvento, "ASPIRANTE") && !strings.Contains(nombreEvento, "PAGO") {
 
 										var aplicaParticular bool = false

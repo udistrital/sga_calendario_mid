@@ -246,7 +246,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 
 													responsableTipoP = map[string]interface{}{
 														"responsableID": responsablesID["Id"].(float64),
-														"Nombre":        fmt.Sprintf(responsablesID["Nombre"].(string)),
+														"Nombre":        fmt.Sprintf("%s", responsablesID["Nombre"].(string)),
 													}
 													responsableList = append(responsableList, responsableTipoP)
 												}
@@ -770,7 +770,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 
 												responsableTipoP = map[string]interface{}{
 													"responsableID": responsablesID["Id"].(float64),
-													"Nombre":        fmt.Sprintf(responsablesID["Nombre"].(string)),
+													"Nombre":        fmt.Sprintf("%s", responsablesID["Nombre"].(string)),
 												}
 												responsableList = append(responsableList, responsableTipoP)
 											}
