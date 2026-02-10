@@ -252,7 +252,7 @@ func GetEvento(persona string) (interface{}, error) {
 func DeleteEvento(id string) (interface{}, error) {
 	var eventoDeleted map[string]interface{}
 
-	errEvento := request.SendJson(fmt.Sprintf("http://"+beego.AppConfig.String("EventoService")+"/tr_evento/"+id), "DELETE", &eventoDeleted, nil)
+	errEvento := request.SendJson(fmt.Sprintf("%s", "http://"+beego.AppConfig.String("EventoService")+"/tr_evento/"+id), "DELETE", &eventoDeleted, nil)
 	if errEvento != nil || eventoDeleted["Message"] != nil {
 		return nil, errors.New("error del servicio DeleteEvento: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 	} else {
