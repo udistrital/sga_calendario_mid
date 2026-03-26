@@ -18,7 +18,7 @@ func GetCalendarByProjectId(idCalendario int) (interface{}, error) {
 	var CalendarioId string = "0"
 	var Calendario map[string]interface{}
 
-	errCalendarios := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario?query=Activo:true&limit=0&sortby=Id&order=desc", &calendarios)
+	errCalendarios := request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=Activo:true&limit=0&sortby=Id&order=desc", &calendarios)
 	if errCalendarios == nil && fmt.Sprintf("%v", calendarios[0]["Nombre"]) != "map[]" {
 		for _, calendario := range calendarios {
 			AplicaExtension := calendario["AplicaExtension"].(bool)
@@ -71,20 +71,20 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 	var proyectosArrMap []map[string]interface{}
 
 	// list proyectos padres
-	errProyectosP := request.GetJson("http://"+beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true,NivelFormacionId.Id:"+fmt.Sprintf("%v", idNiv)+"&sortby=Nombre&order=asc&limit=0&fields=Id,Nombre", &proyectosP)
+	errProyectosP := request.GetJson(beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true,NivelFormacionId.Id:"+fmt.Sprintf("%v", idNiv)+"&sortby=Nombre&order=asc&limit=0&fields=Id,Nombre", &proyectosP)
 	if errProyectosP == nil {
 		if fmt.Sprintf("%v", proyectosP) != "[map[]]" {
 			proyectos = append(proyectos, proyectosP...)
 		}
 		// list proyectos hijos
-		errProyectosH := request.GetJson("http://"+beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true,NivelFormacionId.NivelFormacionPadreId.Id:"+fmt.Sprintf("%v", idNiv)+"&sortby=Nombre&order=asc&limit=0&fields=Id,Nombre", &proyectosH)
+		errProyectosH := request.GetJson(beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true,NivelFormacionId.NivelFormacionPadreId.Id:"+fmt.Sprintf("%v", idNiv)+"&sortby=Nombre&order=asc&limit=0&fields=Id,Nombre", &proyectosH)
 		if errProyectosH == nil {
 			if fmt.Sprintf("%v", proyectosH) != "[map[]]" {
 				proyectos = append(proyectos, proyectosH...)
 			}
 
 			if len(proyectos) > 0 {
-				errCalendarios := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario?query=Activo:true,Nivel:"+fmt.Sprintf("%v", idNiv)+",PeriodoId:"+fmt.Sprintf("%v", idPer)+"&limit=0&sortby=Id&order=desc", &calendarios)
+				errCalendarios := request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=Activo:true,Nivel:"+fmt.Sprintf("%v", idNiv)+",PeriodoId:"+fmt.Sprintf("%v", idPer)+"&limit=0&sortby=Id&order=desc", &calendarios)
 				if errCalendarios == nil && fmt.Sprintf("%v", calendarios) != "[map[]]" {
 
 					for _, proyecto := range proyectos {
@@ -134,7 +134,7 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 
 					if len(proyectosArrMap) > 0 {
 						for i := range proyectosArrMap {
-							errEvento := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento/?query=TipoEventoId__CalendarioID__Id:"+proyectosArrMap[i]["CalendarioID"].(string)+",Activo:true&limit=0", &calendarioEventos)
+							errEvento := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento/?query=TipoEventoId__CalendarioID__Id:"+proyectosArrMap[i]["CalendarioID"].(string)+",Activo:true&limit=0", &calendarioEventos)
 							if errEvento == nil && fmt.Sprintf("%v", calendarioEventos) != "[map[]]" {
 
 								var lista_eventos []map[string]interface{}

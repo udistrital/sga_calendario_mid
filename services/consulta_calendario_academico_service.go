@@ -22,7 +22,7 @@ func GetAll() (interface{}, error) {
 	var message string
 	wge := new(errgroup.Group)
 
-	errCalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario?limit=0&sortby=Id&order=desc", &calendarios)
+	errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario?limit=0&sortby=Id&order=desc", &calendarios)
 	if errCalendario == nil {
 		if len(calendarios[0]) > 0 && fmt.Sprintf("%v", calendarios[0]["Nombre"]) != "map[]" {
 			fmt.Println(len(calendarios))
@@ -48,7 +48,7 @@ func GetAll() (interface{}, error) {
 
 						if ListarCalendario {
 							periodoID := fmt.Sprintf("%.f", calendario["PeriodoId"].(float64))
-							errPeriodo = request.GetJson("http://"+beego.AppConfig.String("ParametroService")+"periodo/"+periodoID, &periodo)
+							errPeriodo = request.GetJson(beego.AppConfig.String("ParametroService")+"periodo/"+periodoID, &periodo)
 							if errPeriodo == nil {
 								periodoNombre := ""
 								if periodo["Status"] == "200" {
@@ -111,7 +111,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 	if resultado["Type"] != "error" {
 		// consultar calendario evento por tipo evento
 		var calendarios []map[string]interface{}
-		errcalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId__Id.CalendarioID__Id:"+idCalendario, &calendarios)
+		errcalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId__Id.CalendarioID__Id:"+idCalendario, &calendarios)
 
 		if errcalendario == nil {
 			if calendarios[0]["Id"] != nil {
@@ -132,7 +132,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 						// versionCalendarioResultado = append(versionCalendarioResultado, versionCalendario)
 
 						var calendariosPadre map[string]interface{}
-						errcalendarioPadre := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario/"+padreID, &calendariosPadre)
+						errcalendarioPadre := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+padreID, &calendariosPadre)
 						if calendariosPadre != nil {
 							if errcalendarioPadre == nil {
 								versionCalendario = map[string]interface{}{
@@ -156,7 +156,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 				documento = calendarios[0]["TipoEventoId"].(map[string]interface{})["CalendarioID"].(map[string]interface{})
 				documentoID := fmt.Sprintf("%.f", documento["DocumentoId"].(float64))
 				var documentos map[string]interface{}
-				errdocumento := request.GetJson("http://"+beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
+				errdocumento := request.GetJson(beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
 
 				if errdocumento == nil {
 					if documentos != nil {
@@ -221,7 +221,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 					wge.Go(func() error {
 						var actividadResultado []map[string]interface{}
 						var procesos []map[string]interface{}
-						errproceso := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId.Id:"+procesoList+"&TipoEventoId__Id.CalendarioID__Id:"+idCalendario, &procesos)
+						errproceso := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId.Id:"+procesoList+"&TipoEventoId__Id.CalendarioID__Id:"+idCalendario, &procesos)
 
 						if errproceso == nil {
 							if procesos != nil {
@@ -234,7 +234,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 
 										calendarioResponsableID := fmt.Sprintf("%.f", responsable["Id"].(float64))
 										var responsables []map[string]interface{}
-										errresponsable := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+calendarioResponsableID, &responsables)
+										errresponsable := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+calendarioResponsableID, &responsables)
 
 										if errresponsable == nil {
 											if responsables != nil {
@@ -317,7 +317,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 
 			} else {
 				var calendario map[string]interface{}
-				errcalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario)
+				errcalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario)
 				if errcalendario == nil {
 					if calendario["Id"] != nil {
 
@@ -333,7 +333,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 						documentoID := fmt.Sprintf("%.f", calendario["DocumentoId"].(float64))
 						var documentos map[string]interface{}
 
-						errdocumento := request.GetJson("http://"+beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
+						errdocumento := request.GetJson(beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
 
 						if errdocumento == nil {
 
@@ -407,7 +407,7 @@ func PutInhabilitarCalendario(idCalendario string, data []byte) (interface{}, er
 	alertas := []interface{}{"Response:"}
 	if err := json.Unmarshal(data, &dataPut); err == nil {
 
-		errCalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario)
+		errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario)
 		if errCalendario == nil {
 			if calendario != nil {
 
@@ -416,12 +416,12 @@ func PutInhabilitarCalendario(idCalendario string, data []byte) (interface{}, er
 				}
 				calendario["Activo"] = false
 
-				errCalendario := request.SendJson("http://"+beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, "PUT", &resultado, calendario)
+				errCalendario := request.SendJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, "PUT", &resultado, calendario)
 				if resultado["Type"] == "error" || errCalendario != nil || resultado["Status"] == "404" || resultado["Message"] != nil {
 					success = false
 				} else {
 
-					errCalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"tipo_evento?query=CalendarioID__Id:"+idCalendario, &tipoEvento)
+					errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"tipo_evento?query=CalendarioID__Id:"+idCalendario, &tipoEvento)
 					if errCalendario == nil {
 						if tipoEvento != nil && tipoEvento[0] != nil && len(tipoEvento[0]) > 0 {
 
@@ -430,12 +430,12 @@ func PutInhabilitarCalendario(idCalendario string, data []byte) (interface{}, er
 								idEvento := fmt.Sprintf("%.f", tEvento["Id"].(float64))
 								tEvento["Activo"] = false
 
-								errCalendario := request.SendJson("http://"+beego.AppConfig.String("EventoService")+"tipo_evento/"+idEvento, "PUT", &resultado, tEvento)
+								errCalendario := request.SendJson(beego.AppConfig.String("EventoService")+"tipo_evento/"+idEvento, "PUT", &resultado, tEvento)
 								if resultado["Type"] == "error" || errCalendario != nil || resultado["Status"] == "404" || resultado["Message"] != nil {
 									success = false
 								} else {
 
-									errCalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId__Id:"+idEvento, &calendarioEvento)
+									errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId__Id:"+idEvento, &calendarioEvento)
 									if errCalendario == nil {
 										if calendarioEvento != nil && calendarioEvento[0] != nil && len(calendarioEvento[0]) > 0 {
 
@@ -444,12 +444,12 @@ func PutInhabilitarCalendario(idCalendario string, data []byte) (interface{}, er
 												idCalendarioEvento := fmt.Sprintf("%.f", cEvento["Id"].(float64))
 												cEvento["Activo"] = false
 
-												errCalendario := request.SendJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento/"+idCalendarioEvento, "PUT", &resultado, cEvento)
+												errCalendario := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+idCalendarioEvento, "PUT", &resultado, cEvento)
 												if resultado["Type"] == "error" || errCalendario != nil || resultado["Status"] == "404" || resultado["Message"] != nil {
 													success = false
 												} else {
 
-													errCalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+idCalendarioEvento, &calendarioEventoTipoPublico)
+													errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+idCalendarioEvento, &calendarioEventoTipoPublico)
 													if errCalendario == nil {
 														if calendarioEventoTipoPublico != nil && calendarioEventoTipoPublico[0] != nil && len(calendarioEventoTipoPublico[0]) > 0 {
 
@@ -458,20 +458,20 @@ func PutInhabilitarCalendario(idCalendario string, data []byte) (interface{}, er
 																idCalendarioEventoTipoPublico := fmt.Sprintf("%.f", cEventoTipoPublico["Id"].(float64))
 																cEventoTipoPublico["Activo"] = false
 
-																request.SendJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico/"+idCalendarioEventoTipoPublico, "PUT", &resultado, cEventoTipoPublico)
+																request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico/"+idCalendarioEventoTipoPublico, "PUT", &resultado, cEventoTipoPublico)
 																if resultado["Type"] == "error" || resultado["Status"] == "404" || resultado["Message"] != nil {
 																	success = false
 																} else {
 
 																	idTipoPublico := fmt.Sprintf("%.f", cEventoTipoPublico["TipoPublicoId"].(map[string]interface{})["Id"].(float64))
 
-																	errCalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"tipo_publico/"+idTipoPublico, &tipoPublico)
+																	errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"tipo_publico/"+idTipoPublico, &tipoPublico)
 																	if errCalendario == nil {
 																		if tipoPublico != nil && len(tipoPublico) > 0 {
 
 																			tipoPublico["Activo"] = false
 
-																			errCalendario := request.SendJson("http://"+beego.AppConfig.String("EventoService")+"tipo_publico/"+idTipoPublico, "PUT", &resultado, tipoPublico)
+																			errCalendario := request.SendJson(beego.AppConfig.String("EventoService")+"tipo_publico/"+idTipoPublico, "PUT", &resultado, tipoPublico)
 																			if resultado["Type"] == "error" || errCalendario != nil || resultado["Status"] == "404" || resultado["Message"] != nil {
 																				success = false
 																			}
@@ -549,7 +549,7 @@ func PostCalendarioHijo(data []byte) (interface{}, error) {
 			"DependenciaParticularId": "{}",
 		}
 		fmt.Println(AuxCalendarioHijo["CalendarioPadreId"].(map[string]interface{})["Id"])
-		errCalendarioHijo := request.SendJson("http://"+beego.AppConfig.String("EventoService")+"calendario", "POST", &calendarioHijoPost, CalendarioHijo)
+		errCalendarioHijo := request.SendJson(beego.AppConfig.String("EventoService")+"calendario", "POST", &calendarioHijoPost, CalendarioHijo)
 		CalendarioPadreId = calendarioHijoPost["CalendarioPadreId"].(map[string]interface{})["Id"]
 
 		if errCalendarioHijo == nil && fmt.Sprintf("%v", calendarioHijoPost["System"]) != "map[]" && calendarioHijoPost["Id"] != nil {
@@ -557,7 +557,7 @@ func PostCalendarioHijo(data []byte) (interface{}, error) {
 
 				//Se trae el calendario padre con el Id obtenido por el calendario hijo
 				IdPadre := fmt.Sprintf("%.f", CalendarioPadreId.(float64))
-				errCalendarioPadre := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario?query=Id:"+IdPadre, &CalendarioPadre)
+				errCalendarioPadre := request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=Id:"+IdPadre, &CalendarioPadre)
 				if errCalendarioPadre == nil {
 					if CalendarioPadre[0]["Id"] != nil {
 
@@ -567,7 +567,7 @@ func PostCalendarioHijo(data []byte) (interface{}, error) {
 							CalendarioPadre[0]["DependenciaParticularId"] = "{}"
 						}
 						CalendarioPadreAux := CalendarioPadre[0]
-						errCalendarioPadre := request.SendJson("http://"+beego.AppConfig.String("EventoService")+"calendario/"+IdPadre, "PUT", &CalendarioPadrePut, CalendarioPadreAux)
+						errCalendarioPadre := request.SendJson(beego.AppConfig.String("EventoService")+"calendario/"+IdPadre, "PUT", &CalendarioPadrePut, CalendarioPadreAux)
 						if errCalendarioPadre == nil && fmt.Sprintf("%v", CalendarioPadrePut["System"]) != "map[]" && CalendarioPadrePut["Id"] != nil {
 							if CalendarioPadrePut["Status"] != 400 {
 								return requestresponse.APIResponseDTO(false, 200, calendarioHijoPost), nil
@@ -620,7 +620,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 	if resultado["Type"] != "error" {
 		// consultar calendario evento por tipo evento
 		var calendarios []map[string]interface{}
-		errcalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId__Id.CalendarioID__Id:"+idCalendario, &calendarios)
+		errcalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId__Id.CalendarioID__Id:"+idCalendario, &calendarios)
 		if errcalendario == nil {
 			if calendarios[0]["Id"] != nil {
 
@@ -634,7 +634,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 					if padreID != "" {
 
 						var calendariosPadre map[string]interface{}
-						errcalendarioPadre := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario/"+padreID, &calendariosPadre)
+						errcalendarioPadre := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+padreID, &calendariosPadre)
 						if calendariosPadre != nil {
 							if errcalendarioPadre == nil {
 								versionCalendario = map[string]interface{}{
@@ -660,7 +660,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 				documentoID := fmt.Sprintf("%.f", documento["DocumentoId"].(float64))
 
 				var documentos map[string]interface{}
-				errdocumento := request.GetJson("http://"+beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
+				errdocumento := request.GetJson(beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
 
 				if errdocumento == nil {
 					if documentos != nil {
@@ -687,7 +687,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 
 				if documentoExtID != 0 && ok {
 					var documentosExt map[string]interface{}
-					errdocumentoExt := request.GetJson("http://"+beego.AppConfig.String("DocumentosService")+"documento/"+fmt.Sprintf("%.f", documentoExtID), &documentosExt)
+					errdocumentoExt := request.GetJson(beego.AppConfig.String("DocumentosService")+"documento/"+fmt.Sprintf("%.f", documentoExtID), &documentosExt)
 
 					if errdocumentoExt == nil {
 						if documentosExt != nil {
@@ -745,7 +745,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 				for _, procesoList := range arr {
 
 					var procesos []map[string]interface{}
-					errproceso := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId.Id:"+procesoList+"&TipoEventoId__Id.CalendarioID__Id:"+idCalendario, &procesos)
+					errproceso := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId.Id:"+procesoList+"&TipoEventoId__Id.CalendarioID__Id:"+idCalendario, &procesos)
 
 					if errproceso == nil {
 						if procesos != nil {
@@ -758,7 +758,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 
 									calendarioResponsableID := fmt.Sprintf("%.f", responsable["Id"].(float64))
 									var responsables []map[string]interface{}
-									errresponsable := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+calendarioResponsableID, &responsables)
+									errresponsable := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+calendarioResponsableID, &responsables)
 
 									if errresponsable == nil {
 										if responsables != nil {
@@ -817,7 +817,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 				calendarioAux := calendarios[0]["TipoEventoId"].(map[string]interface{})["CalendarioID"].(map[string]interface{})
 
 				var calendariosExt []map[string]interface{}
-				errcalendariosExt := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario?query=AplicaExtension:true,CalendarioPadreId.Id:"+idCalendario+"&limit=0", &calendariosExt)
+				errcalendariosExt := request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=AplicaExtension:true,CalendarioPadreId.Id:"+idCalendario+"&limit=0", &calendariosExt)
 				if errcalendariosExt == nil {
 					fmt.Println("list: ", calendariosExt)
 					if calendariosExt != nil && fmt.Sprintf("%v", calendariosExt) != "[map[]]" {
@@ -864,7 +864,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 			} else {
 				///////////////////////// sin eventos //////////////////////
 				var calendario map[string]interface{}
-				errcalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario)
+				errcalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario)
 				if errcalendario == nil {
 					if calendario["Id"] != nil {
 
@@ -879,7 +879,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 
 						documentoID := fmt.Sprintf("%.f", calendario["DocumentoId"].(float64))
 						var documentos map[string]interface{}
-						errdocumento := request.GetJson("http://"+beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
+						errdocumento := request.GetJson(beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
 
 						if errdocumento == nil {
 
@@ -908,7 +908,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 
 						if documentoExtID != 0 && ok {
 							var documentosExt map[string]interface{}
-							errdocumentoExt := request.GetJson("http://"+beego.AppConfig.String("DocumentosService")+"documento/"+fmt.Sprintf("%.f", documentoExtID), &documentosExt)
+							errdocumentoExt := request.GetJson(beego.AppConfig.String("DocumentosService")+"documento/"+fmt.Sprintf("%.f", documentoExtID), &documentosExt)
 
 							if errdocumentoExt == nil {
 								if documentosExt != nil {
@@ -933,7 +933,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 						}
 
 						var calendariosExt []map[string]interface{}
-						errcalendariosExt := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario?query=AplicaExtension:true,CalendarioPadreId.Id:"+idCalendario+"&limit=0", &calendariosExt)
+						errcalendariosExt := request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=AplicaExtension:true,CalendarioPadreId.Id:"+idCalendario+"&limit=0", &calendariosExt)
 						if errcalendariosExt == nil {
 							fmt.Println("list: ", calendariosExt)
 							if calendariosExt != nil && fmt.Sprintf("%v", calendariosExt) != "[map[]]" {

@@ -23,7 +23,7 @@ func PostActividadCalendario(data []byte) (interface{}, error) {
 	if err := json.Unmarshal(data, &actividadCalendario); err == nil {
 		Actividad := actividadCalendario["Actividad"]
 		//Solicitid post a eventos service enviando el json recibido
-		errActividad := request.SendJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento", "POST", &actividadCalendarioPost, Actividad)
+		errActividad := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento", "POST", &actividadCalendarioPost, Actividad)
 		if errActividad == nil && fmt.Sprintf("%v", actividadCalendarioPost["System"]) != "map[]" && actividadCalendarioPost["Id"] != nil {
 			if actividadCalendarioPost["Status"] != 400 {
 				IdActividad = actividadCalendarioPost["Id"]
@@ -45,14 +45,14 @@ func PostActividadCalendario(data []byte) (interface{}, error) {
 				"CalendarioEventoId": map[string]interface{}{"Id": IdActividad.(float64)},
 			}
 
-			errActividadPersona := request.SendJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico", "POST", &actividadPersonaPost, CalendarioEventoTipoPersona)
+			errActividadPersona := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico", "POST", &actividadPersonaPost, CalendarioEventoTipoPersona)
 
 			if errActividadPersona == nil && fmt.Sprintf("%v", actividadPersonaPost["System"]) != "map[]" && actividadPersonaPost["Id"] != nil {
 				if actividadPersonaPost["Status"] != 400 {
 					return requestresponse.APIResponseDTO(true, 200, actividadCalendarioPost), nil
 				} else {
 					var resultado2 map[string]interface{}
-					request.SendJson(fmt.Sprintf("http://"+beego.AppConfig.String("EventoService")+"/calendario_evento/%.f", actividadCalendarioPost["Id"]), "DELETE", &resultado2, nil)
+					request.SendJson(fmt.Sprintf(beego.AppConfig.String("EventoService")+"/calendario_evento/%.f", actividadCalendarioPost["Id"]), "DELETE", &resultado2, nil)
 					logs.Error(errActividadPersona)
 				}
 			} else {
@@ -74,12 +74,12 @@ func UpdateActividadResponsables(idStr string, data []byte) (interface{}, error)
 	actividadId, _ := strconv.Atoi(idStr)
 	if err := json.Unmarshal(data, &recibido); err == nil {
 		datos := recibido["resp"].([]interface{})
-		errConsulta := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+idStr, &guardados)
+		errConsulta := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+idStr, &guardados)
 		if errConsulta == nil {
 			if len(guardados) > 0 {
 				for _, registro := range guardados {
 					idRegistro := fmt.Sprintf("%.f", registro["Id"].(float64))
-					errBorrado = request.SendJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico/"+idRegistro, "DELETE", &auxDelete, nil)
+					errBorrado = request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico/"+idRegistro, "DELETE", &auxDelete, nil)
 					fmt.Println(errBorrado)
 				}
 			}
@@ -90,7 +90,7 @@ func UpdateActividadResponsables(idStr string, data []byte) (interface{}, error)
 						"TipoPublicoId":      map[string]interface{}{"Id": tipoPublico.(map[string]interface{})["responsableID"]},
 						"CalendarioEventoId": map[string]interface{}{"Id": actividadId},
 					}
-					errPost := request.SendJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico", "POST", &auxUpdate, nuevoPublico)
+					errPost := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico", "POST", &auxUpdate, nuevoPublico)
 					if errPost == nil {
 						actualizados = append(actualizados, auxUpdate)
 					} else {
