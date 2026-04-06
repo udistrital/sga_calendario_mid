@@ -1,55 +1,49 @@
 package main
 
 import (
-	"github.com/go-co-op/gocron"
 	_ "github.com/udistrital/sga_calendario_mid/routers"
-	"github.com/udistrital/sga_calendario_mid/services"
 
 	apistatus "github.com/udistrital/utils_oas/apiStatusLib"
-
-	"time"
+	"github.com/udistrital/utils_oas/customerrorv2"
+	"github.com/udistrital/utils_oas/security"
 
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/plugins/cors"
 	"github.com/udistrital/auditoria"
 	"github.com/udistrital/utils_oas/xray"
 )
 
 func main() {
-	if beego.BConfig.RunMode == "dev" {
+	allowedOrigins := []string{"*.udistrital.edu.co"}
+	if beego.BConfig.RunMode == beego.DEV {
+		allowedOrigins = []string{"*"}
+		// orm.Debug = true// Solo para APIs CRUD
 		beego.BConfig.WebConfig.DirectoryIndex = true
 		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
 	}
 
 	beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"PUT", "PATCH", "GET", "POST", "OPTIONS", "DELETE"},
-		AllowHeaders: []string{"Origin", "x-requested-with",
-			"content-type",
-			"accept",
-			"origin",
-			"authorization",
-			"x-csrftoken"},
-		ExposeHeaders:    []string{"Content-Length"},
+		AllowOrigins: allowedOrigins,
+		AllowMethods: []string{"DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"}, // ajustar según los métodos usados en el api
+		AllowHeaders: []string{
+			"Accept",
+			"Authorization",
+			"Content-Type",
+			"User-Agent",
+			"X-Amzn-Trace-Id"},
+		ExposeHeaders:    []string{"Content-Length"}, // agregar otros headers según sea el caso
 		AllowCredentials: true,
 	}))
 
-	xray.InitXRay()
+	err := xray.InitXRay()
+	if err != nil {
+		logs.Error("error configurando AWS XRay: %v", err)
+	}
 	apistatus.Init()
 	auditoria.InitMiddleware()
-
-	// Inicializar el scheduler
-	scheduler := gocron.NewScheduler(time.UTC)
-
-	// Programar la verificación de actividades diarias cada hora
-	scheduler.Every(1).Days().Do(services.VerificacionActividadesDiarias)
-
-	// Programar las actividades de ejecución única
-	services.VerificacionActividadesEjecucionUnica(scheduler)
-
-	// Iniciar el scheduler de manera asíncrona
-	scheduler.StartAsync()
-
+	beego.ErrorController(&customerrorv2.CustomErrorController{})
+	security.SetSecurityHeaders()
 	beego.Run()
 
 	// Mantener el scheduler corriendo

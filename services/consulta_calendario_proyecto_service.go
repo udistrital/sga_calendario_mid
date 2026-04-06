@@ -18,13 +18,13 @@ func GetCalendarByProjectId(idCalendario int) (interface{}, error) {
 	var CalendarioId string = "0"
 	var Calendario map[string]interface{}
 
-	errCalendarios := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario?query=Activo:true&limit=0&sortby=Id&order=desc", &calendarios)
+	errCalendarios := request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=Activo:true&limit=0&sortby=Id&order=desc", &calendarios)
 	if errCalendarios == nil && fmt.Sprintf("%v", calendarios[0]["Nombre"]) != "map[]" {
 		for _, calendario := range calendarios {
 			AplicaExtension := calendario["AplicaExtension"].(bool)
 			if AplicaExtension {
 				DependenciaParticularId := calendario["DependenciaParticularId"].(string)
-				if DependenciaParticularId != "{}" || DependenciaParticularId != "" {
+				if DependenciaParticularId != "{}" && DependenciaParticularId != "" {
 					var listaProyectos map[string][]int
 					json.Unmarshal([]byte(DependenciaParticularId), &listaProyectos)
 					for _, Id := range listaProyectos["proyectos"] {
@@ -71,20 +71,20 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 	var proyectosArrMap []map[string]interface{}
 
 	// list proyectos padres
-	errProyectosP := request.GetJson("http://"+beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true,NivelFormacionId.Id:"+fmt.Sprintf("%v", idNiv)+"&sortby=Nombre&order=asc&limit=0&fields=Id,Nombre", &proyectosP)
+	errProyectosP := request.GetJson(beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true,NivelFormacionId.Id:"+fmt.Sprintf("%v", idNiv)+"&sortby=Nombre&order=asc&limit=0&fields=Id,Nombre", &proyectosP)
 	if errProyectosP == nil {
 		if fmt.Sprintf("%v", proyectosP) != "[map[]]" {
 			proyectos = append(proyectos, proyectosP...)
 		}
 		// list proyectos hijos
-		errProyectosH := request.GetJson("http://"+beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true,NivelFormacionId.NivelFormacionPadreId.Id:"+fmt.Sprintf("%v", idNiv)+"&sortby=Nombre&order=asc&limit=0&fields=Id,Nombre", &proyectosH)
+		errProyectosH := request.GetJson(beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true,NivelFormacionId.NivelFormacionPadreId.Id:"+fmt.Sprintf("%v", idNiv)+"&sortby=Nombre&order=asc&limit=0&fields=Id,Nombre", &proyectosH)
 		if errProyectosH == nil {
 			if fmt.Sprintf("%v", proyectosH) != "[map[]]" {
 				proyectos = append(proyectos, proyectosH...)
 			}
 
 			if len(proyectos) > 0 {
-				errCalendarios := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario?query=Activo:true,Nivel:"+fmt.Sprintf("%v", idNiv)+",PeriodoId:"+fmt.Sprintf("%v", idPer)+"&limit=0&sortby=Id&order=desc", &calendarios)
+				errCalendarios := request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=Activo:true,Nivel:"+fmt.Sprintf("%v", idNiv)+",PeriodoId:"+fmt.Sprintf("%v", idPer)+"&limit=0&sortby=Id&order=desc", &calendarios)
 				if errCalendarios == nil && fmt.Sprintf("%v", calendarios) != "[map[]]" {
 
 					for _, proyecto := range proyectos {
@@ -94,7 +94,7 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 							AplicaExtension := calendario["AplicaExtension"].(bool)
 							if AplicaExtension {
 								DependenciaParticularId := calendario["DependenciaParticularId"].(string)
-								if DependenciaParticularId != "{}" || DependenciaParticularId != "" {
+								if DependenciaParticularId != "{}" && DependenciaParticularId != "" {
 									var listaProyectos map[string][]int
 									json.Unmarshal([]byte(DependenciaParticularId), &listaProyectos)
 									for _, Id := range listaProyectos["proyectos"] {
@@ -134,81 +134,50 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 
 					if len(proyectosArrMap) > 0 {
 						for i := range proyectosArrMap {
-							errEvento := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario_evento/?query=TipoEventoId__CalendarioID__Id:"+proyectosArrMap[i]["CalendarioID"].(string)+",Activo:true&limit=0", &calendarioEventos)
+							errEvento := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento/?query=TipoEventoId__CalendarioID__Id:"+proyectosArrMap[i]["CalendarioID"].(string)+",Activo:true&limit=0", &calendarioEventos)
 							if errEvento == nil && fmt.Sprintf("%v", calendarioEventos) != "[map[]]" {
 
+								var lista_eventos []map[string]interface{}
 								for _, Evento := range calendarioEventos {
-									nombreEvento := strings.ToUpper(fmt.Sprintf(Evento["Nombre"].(string)))
-									if strings.Contains(nombreEvento, "INSCRIPCI") && strings.Contains(nombreEvento, "ASPIRANTE") && strings.Contains(nombreEvento, "PAGO") {
-
-										var aplicaParticular bool = false
-										if fmt.Sprintf("%v", Evento["DependenciaId"]) != "" && fmt.Sprintf("%v", Evento["DependenciaId"]) != "{}" {
-											var listaProyectos map[string]interface{}
-											json.Unmarshal([]byte(Evento["DependenciaId"].(string)), &listaProyectos)
-											for _, project := range listaProyectos["fechas"].([]interface{}) {
-												if int(project.(map[string]interface{})["Id"].(float64)) == proyectosArrMap[i]["ProyectoId"].(int) {
-													if project.(map[string]interface{})["Activo"].(bool) {
-														proyectosArrMap[i]["Evento"] = map[string]interface{}{
-															"ActividadParticular": true,
-															"NombreEvento":        Evento["Nombre"],
-															"FechaInicioEvento":   project.(map[string]interface{})["Inicio"],
-															"FechaFinEvento":      project.(map[string]interface{})["Fin"],
-														}
+									nombreEvento := strings.ToUpper(Evento["Nombre"].(string))
+									codAbrEvento := Evento["TipoEventoId"].(map[string]interface{})["CodigoAbreviacion"].(string)
+									pago := strings.Contains(nombreEvento, "PAGO")
+									var aplicaParticular bool = false
+									if fmt.Sprintf("%v", Evento["DependenciaId"]) != "" && fmt.Sprintf("%v", Evento["DependenciaId"]) != "{}" {
+										var listaProyectos map[string]interface{}
+										json.Unmarshal([]byte(Evento["DependenciaId"].(string)), &listaProyectos)
+										for _, project := range listaProyectos["fechas"].([]interface{}) {
+											if int(project.(map[string]interface{})["Id"].(float64)) == proyectosArrMap[i]["ProyectoId"].(int) {
+												if project.(map[string]interface{})["Activo"].(bool) {
+													// datos_respuesta := map[string]interface{}{
+													evento_x := map[string]interface{}{
+														"ActividadParticular": true,
+														"NombreEvento":        Evento["Descripcion"],
+														"FechaInicioEvento":   project.(map[string]interface{})["Inicio"],
+														"FechaFinEvento":      project.(map[string]interface{})["Fin"],
+														"CodigoAbreviacion":   codAbrEvento,
+														"Pago":                pago,
 													}
-													aplicaParticular = true
-													break
+													lista_eventos = append(lista_eventos, evento_x)
 												}
+												aplicaParticular = true
+												break
 											}
 										}
-										if !aplicaParticular {
-											proyectosArrMap[i]["Evento"] = map[string]interface{}{
-												"ActividadParticular": false,
-												"NombreEvento":        Evento["Nombre"],
-												"FechaInicioEvento":   Evento["FechaInicio"],
-												"FechaFinEvento":      Evento["FechaFin"],
-											}
+									}
+									if !aplicaParticular {
+										evento_x := map[string]interface{}{
+											"ActividadParticular": false,
+											"NombreEvento":        Evento["Descripcion"],
+											"FechaInicioEvento":   Evento["FechaInicio"],
+											"FechaFinEvento":      Evento["FechaFin"],
+											"CodigoAbreviacion":   codAbrEvento,
+											"Pago":                pago,
 										}
-
-										break
+										lista_eventos = append(lista_eventos, evento_x)
 									}
 								}
-
-								for _, Evento := range calendarioEventos {
-									nombreEvento := strings.ToUpper(fmt.Sprintf(Evento["Nombre"].(string)))
-									if strings.Contains(nombreEvento, "INSCRIPCI") && strings.Contains(nombreEvento, "ASPIRANTE") && !strings.Contains(nombreEvento, "PAGO") {
-
-										var aplicaParticular bool = false
-										if fmt.Sprintf("%v", Evento["DependenciaId"]) != "" && fmt.Sprintf("%v", Evento["DependenciaId"]) != "{}" {
-											var listaProyectos map[string]interface{}
-											json.Unmarshal([]byte(Evento["DependenciaId"].(string)), &listaProyectos)
-											for _, project := range listaProyectos["fechas"].([]interface{}) {
-												if int(project.(map[string]interface{})["Id"].(float64)) == proyectosArrMap[i]["ProyectoId"].(int) {
-													if project.(map[string]interface{})["Activo"].(bool) {
-														proyectosArrMap[i]["EventoInscripcion"] = map[string]interface{}{
-															"ActividadParticular": true,
-															"NombreEvento":        Evento["Nombre"],
-															"FechaInicioEvento":   project.(map[string]interface{})["Inicio"],
-															"FechaFinEvento":      project.(map[string]interface{})["Fin"],
-														}
-													}
-													aplicaParticular = true
-													break
-												}
-											}
-										}
-										if !aplicaParticular {
-											proyectosArrMap[i]["EventoInscripcion"] = map[string]interface{}{
-												"ActividadParticular": false,
-												"NombreEvento":        Evento["Nombre"],
-												"FechaInicioEvento":   Evento["FechaInicio"],
-												"FechaFinEvento":      Evento["FechaFin"],
-											}
-										}
-
-										break
-									}
-								}
-
+								proyectosArrMap[i]["Evento"] = lista_eventos
 							}
 						}
 					}

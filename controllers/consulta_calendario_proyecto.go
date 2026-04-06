@@ -60,14 +60,14 @@ func (c *ConsultaCalendarioProyectoController) GetCalendarProject() {
 	// Id de el periodo
 	if v := c.GetString("id-periodo"); v != "" {
 		idPeriodo = v
-	}else {
+	} else {
 		c.Ctx.Output.SetStatus(400)
 		c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Parametro id periodo vacío")
 	}
 	// Id de el nivel
 	if v := c.GetString("id-nivel"); v != "" {
 		idNivel = v
-	}else {
+	} else {
 		c.Ctx.Output.SetStatus(400)
 		c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Parametro id nivel vacío")
 	}
