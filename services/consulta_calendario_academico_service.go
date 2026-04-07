@@ -840,6 +840,10 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 					ExisteExtension = true
 				}
 
+				if calendarioAux["MultiplePeriodoId"] == nil {
+					calendarioAux["MultiplePeriodoId"] = ""
+				}
+
 				resultado = map[string]interface{}{
 					"Id":                      idCalendario,
 					"Nombre":                  calendarioAux["Nombre"].(string),
