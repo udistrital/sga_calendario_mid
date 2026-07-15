@@ -31,7 +31,7 @@ func (c *ConsultaCalendarioProyectoController) GetCalendarByProjectId() {
 
 	idCalendario, _ := strconv.Atoi(c.Ctx.Input.Param(":id"))
 
-	resultado, err := services.GetCalendarByProjectId(idCalendario)
+	resultado, err := services.GetCalendarByProjectId(idCalendario, c.GetString("id-periodo"))
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
