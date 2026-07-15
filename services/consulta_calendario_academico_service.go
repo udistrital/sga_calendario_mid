@@ -475,7 +475,6 @@ func PostCalendarioHijo(data []byte, usuario string) (interface{}, error) {
 	} else {
 		return nil, errors.New("error del servicio PostCalendarioHijo: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 	}
-	return nil, errors.New("error del servicio PostCalendarioHijo: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 }
 
 func calendarioActivoPorPeriodoNivel(periodoID string, nivelID string) (bool, error) {
