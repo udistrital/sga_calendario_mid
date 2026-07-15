@@ -71,6 +71,204 @@
                 }
             }
         },
+        "/actividad-calendario/{id}/extension": {
+            "get": {
+                "tags": [
+                    "actividad-calendario"
+                ],
+                "description": "Consulta extensiones de una actividad",
+                "operationId": "ActividadCalendarioController.GetExtensionesActividad",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id de la actividad",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "actividad-calendario"
+                ],
+                "description": "Crea una extensión de fecha fin para una actividad y programas autorizados",
+                "operationId": "ActividadCalendarioController.PostExtensionActividad",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id de la actividad",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body extensión",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
+        "/actividad-calendario/{id}/extension/{extension}": {
+            "put": {
+                "tags": [
+                    "actividad-calendario"
+                ],
+                "description": "Actualiza datos editables de una extensión de actividad",
+                "operationId": "ActividadCalendarioController.PutExtensionActividad",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id de la actividad",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "extension",
+                        "description": "Id de la extensión",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body extensión",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "actividad-calendario"
+                ],
+                "description": "Inactiva una extensión de actividad y sus relaciones",
+                "operationId": "ActividadCalendarioController.DeleteExtensionActividad",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id de la actividad",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "extension",
+                        "description": "Id de la extensión",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
+        "/actividad-calendario/{id}/extension/{extension}/anular": {
+            "put": {
+                "tags": [
+                    "actividad-calendario"
+                ],
+                "description": "Inactiva una extensión de actividad y sus relaciones usando PUT para evitar restricciones de gateway con DELETE",
+                "operationId": "ActividadCalendarioController.AnularExtensionActividad",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id de la actividad",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "extension",
+                        "description": "Id de la extensión",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
+        "/actividad-calendario/{id}/rango-dependencia/{dependencia}": {
+            "get": {
+                "tags": [
+                    "actividad-calendario"
+                ],
+                "description": "Consulta rango permitido para una actividad y dependencia",
+                "operationId": "ActividadCalendarioController.GetRangoActividadDependencia",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id de la actividad",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "dependencia",
+                        "description": "Id de la dependencia",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
         "/calendario-academico/": {
             "get": {
                 "tags": [
@@ -129,6 +327,41 @@
                 }
             }
         },
+        "/calendario-academico/actividad/{id}/dependencias": {
+            "put": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Actualizar DependenciaId de una actividad (calendario_evento)",
+                "operationId": "ConsultaCalendarioAcademicoController.PutActividadDependencias",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id de la actividad",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body { DependenciaId: string }",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
         "/calendario-academico/calendario/academico/{id}/inhabilitar": {
             "put": {
                 "tags": [
@@ -164,6 +397,283 @@
                 }
             }
         },
+        "/calendario-academico/calendario/{id}/dependencias": {
+            "put": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Actualizar DependenciaId (proyectos asociados) de un calendario",
+                "operationId": "ConsultaCalendarioAcademicoController.PutCalendarioDependencias",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id del calendario",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body { DependenciaId: string }",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
+        "/calendario-academico/calendario/{id}/estado": {
+            "put": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Cambiar estado (Activo/Inactivo) de un calendario académico",
+                "operationId": "ConsultaCalendarioAcademicoController.PutCalendarioEstado",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id del calendario",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body { Activo: bool }",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
+        "/calendario-academico/decano/{documento}/facultades": {
+            "get": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Consulta facultades Oikos asociadas al decano usando WSO2 académico y homologación",
+                "operationId": "ConsultaCalendarioAcademicoController.GetFacultadesDecano",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "documento",
+                        "description": "Documento del decano",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
+        "/calendario-academico/eventos/{recurso}": {
+            "get": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Proxy de consulta GET a recursos del CRUD de eventos (calendario, proceso, calendario_evento, catálogos)",
+                "operationId": "ConsultaCalendarioAcademicoController.GetEventosCrud",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "recurso",
+                        "description": "Nombre del recurso (calendario, proceso, calendario_evento, evento_catalogo, tipo_publico, etc.)",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "query",
+                        "description": "Filter. e.g. col1:v1,col2:v2 ...",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "description": "Limit the size of result set. Must be an integer",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Start position of result set. Must be an integer",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Proxy de creación POST a recursos del CRUD de eventos",
+                "operationId": "ConsultaCalendarioAcademicoController.PostEventosCrud",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "recurso",
+                        "description": "Nombre del recurso",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body datos del recurso a crear",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
+        "/calendario-academico/eventos/{recurso}/{id}": {
+            "get": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Proxy de consulta GET por ID a recursos del CRUD de eventos",
+                "operationId": "ConsultaCalendarioAcademicoController.GetEventosCrudId",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "recurso",
+                        "description": "Nombre del recurso",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id del recurso",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Proxy de actualización PUT a recursos del CRUD de eventos",
+                "operationId": "ConsultaCalendarioAcademicoController.PutEventosCrud",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "recurso",
+                        "description": "Nombre del recurso",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id del recurso",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body datos actualizados del recurso",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Proxy de eliminación DELETE a recursos del CRUD de eventos",
+                "operationId": "ConsultaCalendarioAcademicoController.DeleteEventosCrud",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "recurso",
+                        "description": "Nombre del recurso",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id del recurso",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
         "/calendario-academico/padre": {
             "post": {
                 "tags": [
@@ -188,6 +698,130 @@
                     },
                     "403": {
                         "description": ":body is empty"
+                    }
+                }
+            }
+        },
+        "/calendario-academico/proceso": {
+            "post": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Crear un nuevo proceso asociado a un calendario académico",
+                "operationId": "ConsultaCalendarioAcademicoController.PostProcesoCalendario",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body datos del proceso",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
+        "/calendario-academico/proceso/{id}/estado": {
+            "put": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Cambiar estado (Activo/Inactivo) de un proceso",
+                "operationId": "ConsultaCalendarioAcademicoController.PutProcesoEstado",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id del proceso",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body { Activo: bool }",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
+        "/calendario-academico/proceso/{id}/periodicidad": {
+            "put": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Actualizar el TipoRecurrenciaId de un proceso",
+                "operationId": "ConsultaCalendarioAcademicoController.PutProcesoPeriodicidad",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id del proceso",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body { TipoRecurrenciaId: { Id: int } }",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    }
+                }
+            }
+        },
+        "/calendario-academico/secretario-academico/{documento}/facultades": {
+            "get": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Consulta facultades Oikos asociadas al secretario académico usando WSO2 académico y homologación",
+                "operationId": "ConsultaCalendarioAcademicoController.GetFacultadesSecretario",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "documento",
+                        "description": "Documento del secretario académico",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
                     }
                 }
             }
@@ -306,7 +940,7 @@
                 "tags": [
                     "clonar-calendario"
                 ],
-                "description": "Clona calendario, crea tipo_evento si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene",
+                "description": "Clona calendario, crea proceso si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene",
                 "operationId": "ClonarCalendarioController.PostCalendario",
                 "parameters": [
                     {
@@ -329,40 +963,12 @@
                 }
             }
         },
-        "/clonar-calendario/extension": {
-            "post": {
-                "tags": [
-                    "clonar-calendario"
-                ],
-                "description": "Clona calendario para extension, crea tipo_evento si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene",
-                "operationId": "ClonarCalendarioController.PostCalendarioExtension",
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "body",
-                        "description": "body id calendario content",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/{}"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "{}"
-                    },
-                    "400": {
-                        "description": "the request contains incorrect syntax"
-                    }
-                }
-            }
-        },
         "/clonar-calendario/padre": {
             "post": {
                 "tags": [
                     "clonar-calendario"
                 ],
-                "description": "Clona calendario padre, crea tipo_evento si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene",
+                "description": "Clona calendario padre, crea proceso si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene",
                 "operationId": "ClonarCalendarioController.PostCalendarioPadre",
                 "parameters": [
                     {
