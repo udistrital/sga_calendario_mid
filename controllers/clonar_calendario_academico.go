@@ -15,12 +15,11 @@ type ClonarCalendarioController struct {
 func (c *ClonarCalendarioController) URLMapping() {
 	c.Mapping("PostCalendario", c.PostCalendario)
 	c.Mapping("PostCalendarioPadre", c.PostCalendarioPadre)
-	c.Mapping("PostCalendarioExtension", c.PostCalendarioExtension)
 }
 
 // PostCalendario ...
 // @Title PostCalendario
-// @Description Clona calendario, crea tipo_evento si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene
+// @Description Clona calendario, crea proceso si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene
 // @Param	body		body 	{}	true		"body id calendario content"
 // @Success 201 {int}
 // @Failure 400 the request contains incorrect syntax
@@ -28,60 +27,10 @@ func (c *ClonarCalendarioController) URLMapping() {
 func (c *ClonarCalendarioController) PostCalendario() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
+	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
 	data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.PostCalendario(data)
-
-	if err == nil {
-		c.Ctx.Output.SetStatus(200)
-		c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
-	} else {
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
-	}
-
-	c.ServeJSON()
-
-}
-
-// PostCalendarioPadre ...
-// @Title PostCalendarioPadre
-// @Description Clona calendario padre, crea tipo_evento si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene
-// @Param	body		body 	{}	true		"body id calendario content"
-// @Success 200 {}
-// @Failure 400 the request contains incorrect syntax
-// @router /padre [post]
-func (c *ClonarCalendarioController) PostCalendarioPadre() {
-	defer errorhandler.HandlePanic(&c.Controller)
-
-	data := c.Ctx.Input.RequestBody
-
-	resultado, err := services.PostCalendarioPadre(data)
-
-	if err == nil {
-		c.Ctx.Output.SetStatus(200)
-		c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
-	} else {
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
-	}
-
-	c.ServeJSON()
-}
-
-// PostCalendarioExtension ...
-// @Title PostCalendarioExtension
-// @Description Clona calendario para extension, crea tipo_evento si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene
-// @Param	body		body 	{}	true		"body id calendario content"
-// @Success 200 {}
-// @Failure 400 the request contains incorrect syntax
-// @router /extension [post]
-func (c *ClonarCalendarioController) PostCalendarioExtension() {
-	defer errorhandler.HandlePanic(&c.Controller)
-
-	data := c.Ctx.Input.RequestBody
-
-	resultado, err := services.PostCalendarioExtension(data)
+	resultado, err := services.PostCalendario(data, usuario)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -93,4 +42,30 @@ func (c *ClonarCalendarioController) PostCalendarioExtension() {
 
 	c.ServeJSON()
 
+}
+
+// PostCalendarioPadre ...
+// @Title PostCalendarioPadre
+// @Description Clona calendario padre, crea proceso si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene
+// @Param	body		body 	{}	true		"body id calendario content"
+// @Success 200 {}
+// @Failure 400 the request contains incorrect syntax
+// @router /padre [post]
+func (c *ClonarCalendarioController) PostCalendarioPadre() {
+	defer errorhandler.HandlePanic(&c.Controller)
+
+	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
+	data := c.Ctx.Input.RequestBody
+
+	resultado, err := services.PostCalendarioPadre(data, usuario)
+
+	if err == nil {
+		c.Ctx.Output.SetStatus(200)
+		c.Data["json"] = resultado
+	} else {
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
+	}
+
+	c.ServeJSON()
 }
