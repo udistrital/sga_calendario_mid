@@ -209,11 +209,20 @@ func PutEventosCrud(recurso string, id string, data []byte, usuario string) (int
 	}
 
 	if recursosAuditables[recurso] {
+		resultado = entidadActualizadaEventos(recurso, id, resultado)
 		entidadId, _ := strconv.Atoi(id)
 		RegistrarAuditoria(recurso, entidadId, "PUT", anterior, resultado, usuario, "PutEventosCrud/"+recurso)
 	}
 
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
+}
+
+func entidadActualizadaEventos(recurso string, id string, fallback interface{}) interface{} {
+	var actualizado interface{}
+	if err := request.GetJson(beego.AppConfig.String("EventoService")+recurso+"/"+id, &actualizado); err != nil || actualizado == nil {
+		return fallback
+	}
+	return actualizado
 }
 
 func normalizarFechasTimeCalendarioEvento(recurso string, payload interface{}) {
