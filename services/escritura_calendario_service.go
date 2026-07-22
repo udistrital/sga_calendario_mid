@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
@@ -20,12 +21,13 @@ type ImpactoDesasociacionCalendarioError struct {
 }
 
 func (e *ImpactoDesasociacionCalendarioError) Error() string {
-	return "La desasociación de programas académicos tiene impactos en actividades. Confirme para ejecutar la cascada."
+	return "No se pueden desasociar programas académicos con fechas particulares modificadas o extensiones vigentes."
 }
 
 func (e *ImpactoDesasociacionCalendarioError) Data() map[string]interface{} {
 	return map[string]interface{}{
-		"RequiereConfirmacion": true,
+		"RequiereConfirmacion": false,
+		"Bloqueante":           true,
 		"Impactos":             e.Impactos,
 	}
 }
@@ -97,7 +99,7 @@ func PutCalendarioDependencias(id string, data []byte, usuario string, authHeade
 	if errImpacto != nil {
 		return nil, errImpacto
 	}
-	if len(impactos) > 0 && !recibido.Forzar {
+	if len(impactos) > 0 {
 		return nil, &ImpactoDesasociacionCalendarioError{Impactos: impactos}
 	}
 	calendario["DependenciaId"] = dependenciaId
@@ -608,6 +610,443 @@ func PutActividadDependencias(id string, data []byte, usuario string) (interface
 	RegistrarAuditoria("calendario_evento", entidadId, "PUT", anterior, resultado, usuario, "PutActividadDependencias")
 
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
+}
+
+func PostActividadesProgramasMasivo(idCalendario string, data []byte, usuario string) (interface{}, error) {
+	var recibido models.ActividadesProgramasMasivoRequest
+	if err := json.Unmarshal(data, &recibido); err != nil {
+		return nil, errors.New("error del servicio PostActividadesProgramasMasivo: solicitud inválida")
+	}
+
+	operacion := strings.ToLower(strings.TrimSpace(recibido.Operacion))
+	if operacion != "asociar" && operacion != "desasociar" {
+		return nil, errors.New("error del servicio PostActividadesProgramasMasivo: operación inválida")
+	}
+	programas := intSliceUnicos(recibido.ProgramaIds)
+	actividades := intSliceUnicos(recibido.ActividadIds)
+	if len(programas) == 0 || len(actividades) == 0 {
+		return nil, errors.New("error del servicio PostActividadesProgramasMasivo: debe seleccionar programas y actividades")
+	}
+
+	var calendario map[string]interface{}
+	if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario); err != nil || calendario == nil || calendario["Type"] == "error" {
+		return nil, errors.New("error del servicio PostActividadesProgramasMasivo: no fue posible consultar el calendario")
+	}
+	dependenciaCalendario, ok := parseDependenciaEvento(calendario["DependenciaId"])
+	if !ok {
+		return nil, errors.New("error del servicio PostActividadesProgramasMasivo: calendario sin programas académicos válidos")
+	}
+	programasCalendario := proyectosDependencia(dependenciaCalendario)
+	for _, programaID := range programas {
+		if !programasCalendario[programaID] {
+			return nil, errors.New("error del servicio PostActividadesProgramasMasivo: el programa académico " + strconv.Itoa(programaID) + " no está asociado al calendario")
+		}
+	}
+
+	procesadas := 0
+	actualizadas := 0
+	sinCambios := 0
+	impactos := make([]map[string]interface{}, 0)
+	resultados := make([]map[string]interface{}, 0)
+	pendientes := make([]map[string]interface{}, 0)
+	for _, actividadID := range actividades {
+		idActividad := strconv.Itoa(actividadID)
+		var actividad map[string]interface{}
+		if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+idActividad, &actividad); err != nil || actividad == nil || actividad["Type"] == "error" {
+			return nil, errors.New("error del servicio PostActividadesProgramasMasivo: no fue posible consultar la actividad " + idActividad)
+		}
+		pertenece, errPertenece := actividadPerteneceACalendario(actividad, idCalendario)
+		if errPertenece != nil {
+			return nil, errPertenece
+		}
+		if !pertenece {
+			return nil, errors.New("error del servicio PostActividadesProgramasMasivo: la actividad " + idActividad + " no pertenece al calendario")
+		}
+		if activo, ok := actividad["Activo"].(bool); ok && !activo {
+			impactos = append(impactos, map[string]interface{}{
+				"ActividadId":       idActividad,
+				"Actividad":         nombreActividadImpacto(actividad),
+				"ActividadInactiva": true,
+			})
+			continue
+		}
+
+		dependenciaActividad, ok := parseDependenciaEvento(actividad["DependenciaId"])
+		if !ok {
+			dependenciaActividad = map[string]interface{}{"proyectos": []interface{}{}, "fechas": []interface{}{}}
+		}
+		dependenciaActualizada, cambio, impactosActividad, err := dependenciaActividadMasiva(actividad, dependenciaActividad, idActividad, programas, operacion)
+		if err != nil {
+			return nil, err
+		}
+		impactos = append(impactos, impactosActividad...)
+		procesadas++
+		if !cambio {
+			sinCambios++
+			continue
+		}
+		pendientes = append(pendientes, map[string]interface{}{
+			"ActividadId":   actividadID,
+			"IdActividad":   idActividad,
+			"Actividad":     actividad,
+			"DependenciaId": dependenciaActualizada,
+		})
+	}
+
+	if len(impactos) > 0 {
+		return nil, &ImpactoDesasociacionCalendarioError{Impactos: impactos}
+	}
+
+	for _, pendiente := range pendientes {
+		actividadID := pendiente["ActividadId"].(int)
+		idActividad := pendiente["IdActividad"].(string)
+		actividad := pendiente["Actividad"].(map[string]interface{})
+		dependenciaActualizada := pendiente["DependenciaId"].(map[string]interface{})
+		anterior := deepCopyMap(actividad)
+		dependenciaBytes, _ := json.Marshal(dependenciaActualizada)
+		actividad["DependenciaId"] = string(dependenciaBytes)
+		var resultado map[string]interface{}
+		if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+idActividad, "PUT", &resultado, actividad); err != nil || resultado == nil || resultado["Type"] == "error" {
+			return nil, errors.New("error del servicio PostActividadesProgramasMasivo: no fue posible actualizar la actividad " + idActividad)
+		}
+		RegistrarAuditoria("calendario_evento", actividadID, "PUT", anterior, resultado, usuario, "PostActividadesProgramasMasivo/"+operacion)
+		actualizadas++
+		resultados = append(resultados, map[string]interface{}{"ActividadId": actividadID, "DependenciaId": dependenciaActualizada})
+	}
+
+	return requestresponse.APIResponseDTO(true, 200, map[string]interface{}{
+		"Procesadas":   procesadas,
+		"Actualizadas": actualizadas,
+		"SinCambios":   sinCambios,
+		"Operacion":    operacion,
+		"Resultados":   resultados,
+	}), nil
+}
+
+func PostValidarActividadesProgramasMasivo(idCalendario string, data []byte) (interface{}, error) {
+	var recibido models.ActividadesProgramasMasivoRequest
+	if err := json.Unmarshal(data, &recibido); err != nil {
+		return nil, errors.New("error del servicio PostValidarActividadesProgramasMasivo: solicitud inválida")
+	}
+	programas := intSliceUnicos(recibido.ProgramaIds)
+	actividades := intSliceUnicos(recibido.ActividadIds)
+	if len(programas) == 0 {
+		return nil, errors.New("error del servicio PostValidarActividadesProgramasMasivo: debe seleccionar programas")
+	}
+
+	var calendario map[string]interface{}
+	if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario); err != nil || calendario == nil || calendario["Type"] == "error" {
+		return nil, errors.New("error del servicio PostValidarActividadesProgramasMasivo: no fue posible consultar el calendario")
+	}
+	dependenciaCalendario, ok := parseDependenciaEvento(calendario["DependenciaId"])
+	if !ok {
+		return nil, errors.New("error del servicio PostValidarActividadesProgramasMasivo: calendario sin programas académicos válidos")
+	}
+	programasCalendario := proyectosDependencia(dependenciaCalendario)
+	programasInvalidos := make([]int, 0)
+	for _, programaID := range programas {
+		if !programasCalendario[programaID] {
+			programasInvalidos = append(programasInvalidos, programaID)
+		}
+	}
+	if len(programasInvalidos) > 0 {
+		return nil, errors.New("error del servicio PostValidarActividadesProgramasMasivo: hay programas no asociados al calendario")
+	}
+
+	actividadesConsultadas, err := consultarActividadesMasivas(idCalendario, actividades)
+	if err != nil {
+		return nil, err
+	}
+	validaciones := make([]map[string]interface{}, 0)
+	pendientesAsociar := 0
+	disponiblesDesasociar := 0
+	bloqueadas := 0
+	for _, actividad := range actividadesConsultadas {
+		validacion, err := validarActividadProgramasMasivo(idCalendario, actividad, programas)
+		if err != nil {
+			return nil, err
+		}
+		if puede, _ := validacion["PuedeAsociar"].(bool); puede {
+			pendientesAsociar++
+		}
+		if puede, _ := validacion["PuedeDesasociar"].(bool); puede {
+			disponiblesDesasociar++
+		}
+		if bloqueos, ok := validacion["Bloqueos"].([]map[string]interface{}); ok && len(bloqueos) > 0 {
+			bloqueadas++
+		}
+		validaciones = append(validaciones, validacion)
+	}
+
+	return requestresponse.APIResponseDTO(true, 200, map[string]interface{}{
+		"ProgramaIds":             programas,
+		"Actividades":             validaciones,
+		"PendientesAsociar":       pendientesAsociar,
+		"DisponiblesDesasociar":   disponiblesDesasociar,
+		"BloqueadasDesasociacion": bloqueadas,
+	}), nil
+}
+
+func consultarActividadesMasivas(idCalendario string, actividades []int) ([]map[string]interface{}, error) {
+	if len(actividades) == 0 {
+		var eventos []map[string]interface{}
+		urlEventos := beego.AppConfig.String("EventoService") + "calendario_evento?query=Activo:true,ProcesoId__CalendarioID__Id:" + idCalendario + "&limit=0"
+		if err := request.GetJson(urlEventos, &eventos); err != nil {
+			return nil, errors.New("error del servicio PostValidarActividadesProgramasMasivo: no fue posible consultar actividades del calendario")
+		}
+		return eventos, nil
+	}
+	resultado := make([]map[string]interface{}, 0, len(actividades))
+	for _, actividadID := range actividades {
+		idActividad := strconv.Itoa(actividadID)
+		var actividad map[string]interface{}
+		if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+idActividad, &actividad); err != nil || actividad == nil || actividad["Type"] == "error" {
+			return nil, errors.New("error del servicio PostValidarActividadesProgramasMasivo: no fue posible consultar la actividad " + idActividad)
+		}
+		pertenece, errPertenece := actividadPerteneceACalendario(actividad, idCalendario)
+		if errPertenece != nil {
+			return nil, errPertenece
+		}
+		if !pertenece {
+			return nil, errors.New("error del servicio PostValidarActividadesProgramasMasivo: la actividad " + idActividad + " no pertenece al calendario")
+		}
+		resultado = append(resultado, actividad)
+	}
+	return resultado, nil
+}
+
+func validarActividadProgramasMasivo(idCalendario string, actividad map[string]interface{}, programas []int) (map[string]interface{}, error) {
+	_ = idCalendario
+	idActividad, _ := idToString(actividad["Id"])
+	dependenciaActividad, ok := parseDependenciaEvento(actividad["DependenciaId"])
+	if !ok {
+		dependenciaActividad = map[string]interface{}{"proyectos": []interface{}{}, "fechas": []interface{}{}}
+	}
+	programasActuales := proyectosDependencia(dependenciaActividad)
+	asociados := make([]int, 0)
+	faltantes := make([]int, 0)
+	bloqueos := make([]map[string]interface{}, 0)
+	activo, okActivo := actividad["Activo"].(bool)
+	if !okActivo {
+		activo = true
+	}
+	if !activo {
+		bloqueos = append(bloqueos, map[string]interface{}{
+			"ActividadId":       idActividad,
+			"ActividadInactiva": true,
+			"Motivo":            "Actividad inactiva",
+		})
+	}
+	for _, programaID := range programas {
+		if programasActuales[programaID] {
+			asociados = append(asociados, programaID)
+			fechaParticular := tieneFechaParticularModificada(actividad, dependenciaActividad, programaID)
+			extensionVigente, err := tieneExtensionVigenteDependencia(idActividad, programaID)
+			if err != nil {
+				return nil, err
+			}
+			if fechaParticular || extensionVigente {
+				bloqueos = append(bloqueos, map[string]interface{}{
+					"ProgramaId":       programaID,
+					"ActividadId":      idActividad,
+					"FechaParticular":  fechaParticular,
+					"ExtensionVigente": extensionVigente,
+				})
+			}
+		} else {
+			faltantes = append(faltantes, programaID)
+		}
+	}
+	return map[string]interface{}{
+		"ActividadId":        idActividad,
+		"Nombre":             nombreActividadImpacto(actividad),
+		"Descripcion":        descripcionActividadImpacto(actividad),
+		"Activo":             activo,
+		"Asociados":          asociados,
+		"Faltantes":          faltantes,
+		"Bloqueos":           bloqueos,
+		"PuedeAsociar":       activo && len(faltantes) > 0,
+		"PuedeDesasociar":    activo && len(asociados) > 0 && len(bloqueos) == 0,
+		"TotalSeleccionados": len(programas),
+	}, nil
+}
+
+func descripcionActividadImpacto(actividad map[string]interface{}) string {
+	if descripcion, ok := actividad["Descripcion"].(string); ok && descripcion != "" {
+		return descripcion
+	}
+	if catalogo, ok := actividad["EventoCatalogoId"].(map[string]interface{}); ok {
+		if descripcion, ok := catalogo["Descripcion"].(string); ok && descripcion != "" {
+			return descripcion
+		}
+	}
+	return ""
+}
+
+func dependenciaActividadMasiva(actividad map[string]interface{}, dependenciaActividad map[string]interface{}, idActividad string, programas []int, operacion string) (map[string]interface{}, bool, []map[string]interface{}, error) {
+	resultado := deepCopyMap(dependenciaActividad)
+	programasActuales := proyectosDependencia(dependenciaActividad)
+	impactos := make([]map[string]interface{}, 0)
+	cambio := false
+
+	if operacion == "asociar" {
+		for _, programaID := range programas {
+			if !programasActuales[programaID] {
+				programasActuales[programaID] = true
+				cambio = true
+			}
+		}
+		resultado["proyectos"] = proyectosOrdenadosInterface(programasActuales)
+		fechasActualizadas, cambioFechas := fechasConDefaultProgramas(actividad, dependenciaActividad, programas)
+		if cambioFechas {
+			cambio = true
+		}
+		resultado["fechas"] = fechasActualizadas
+		return resultado, cambio, impactos, nil
+	}
+
+	for _, programaID := range programas {
+		if !programasActuales[programaID] {
+			continue
+		}
+		fechaParticular := tieneFechaParticularModificada(actividad, dependenciaActividad, programaID)
+		extensionVigente, err := tieneExtensionVigenteDependencia(idActividad, programaID)
+		if err != nil {
+			return nil, false, nil, err
+		}
+		if fechaParticular || extensionVigente {
+			impactos = append(impactos, map[string]interface{}{
+				"ProgramaId":       programaID,
+				"ActividadId":      idActividad,
+				"Actividad":        nombreActividadImpacto(actividad),
+				"FechaParticular":  fechaParticular,
+				"ExtensionVigente": extensionVigente,
+			})
+			continue
+		}
+		delete(programasActuales, programaID)
+		cambio = true
+	}
+	if len(impactos) > 0 {
+		return resultado, false, impactos, nil
+	}
+
+	fechasActualizadas := make([]interface{}, 0)
+	if fechasRaw, ok := dependenciaActividad["fechas"].([]interface{}); ok {
+		for _, fecha := range fechasRaw {
+			fechaMap, ok := fecha.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			programaID, ok := interfaceToInt(fechaMap["Id"])
+			if ok && programasActuales[programaID] {
+				fechasActualizadas = append(fechasActualizadas, fechaMap)
+			}
+		}
+	}
+	resultado["proyectos"] = proyectosOrdenadosInterface(programasActuales)
+	resultado["fechas"] = fechasActualizadas
+	return resultado, cambio, impactos, nil
+}
+
+func fechasConDefaultProgramas(actividad map[string]interface{}, dependenciaActividad map[string]interface{}, programas []int) ([]interface{}, bool) {
+	fechasActualizadas := make([]interface{}, 0)
+	fechasPorPrograma := make(map[int]bool)
+	if fechasRaw, ok := dependenciaActividad["fechas"].([]interface{}); ok {
+		for _, fecha := range fechasRaw {
+			fechaMap, ok := fecha.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			programaID, ok := interfaceToInt(fechaMap["Id"])
+			if ok {
+				fechasPorPrograma[programaID] = true
+			}
+			fechasActualizadas = append(fechasActualizadas, fechaMap)
+		}
+	}
+
+	cambio := false
+	for _, programaID := range programas {
+		if fechasPorPrograma[programaID] {
+			continue
+		}
+		fechasActualizadas = append(fechasActualizadas, map[string]interface{}{
+			"Id":           programaID,
+			"Inicio":       fechaDependenciaActividad(actividad["FechaInicio"]),
+			"Fin":          fechaDependenciaActividad(actividad["FechaFin"]),
+			"Modificacion": time.Now().In(helpers.GMTMinus5Location).Format("2006-01-02T15:04:05"),
+			"Activo":       true,
+		})
+		fechasPorPrograma[programaID] = true
+		cambio = true
+	}
+	return fechasActualizadas, cambio
+}
+
+func fechaDependenciaActividad(value interface{}) string {
+	fecha := strings.TrimSpace(fmt.Sprintf("%v", value))
+	if fecha == "" || fecha == "<nil>" {
+		return ""
+	}
+	parsed, err := helpers.ParseFecha(fecha)
+	if err == nil {
+		return parsed.In(helpers.GMTMinus5Location).Format("2006-01-02T15:04:05")
+	}
+	fecha = strings.Replace(fecha, " ", "T", 1)
+	if len(fecha) >= len("2006-01-02T15:04:05") {
+		return fecha[:len("2006-01-02T15:04:05")]
+	}
+	return fecha
+}
+
+func actividadPerteneceACalendario(actividad map[string]interface{}, idCalendario string) (bool, error) {
+	proceso, ok := actividad["ProcesoId"].(map[string]interface{})
+	if !ok || proceso == nil {
+		return false, nil
+	}
+	if calendarioPertenece(proceso["CalendarioID"], idCalendario) {
+		return true, nil
+	}
+	idProceso, ok := idToString(proceso["Id"])
+	if !ok {
+		return false, nil
+	}
+	var procesoCompleto map[string]interface{}
+	if err := request.GetJson(beego.AppConfig.String("EventoService")+"proceso/"+idProceso, &procesoCompleto); err != nil || procesoCompleto == nil || procesoCompleto["Type"] == "error" {
+		return false, errors.New("error del servicio PostActividadesProgramasMasivo: no fue posible validar el proceso de la actividad")
+	}
+	return calendarioPertenece(procesoCompleto["CalendarioID"], idCalendario), nil
+}
+
+func calendarioPertenece(calendarioValue interface{}, idCalendario string) bool {
+	calendario, ok := calendarioValue.(map[string]interface{})
+	if !ok || calendario == nil {
+		return false
+	}
+	id, ok := idToString(calendario["Id"])
+	return ok && id == idCalendario
+}
+
+func intSliceUnicos(valores []int) []int {
+	vistos := make(map[int]bool)
+	resultado := make([]int, 0)
+	for _, valor := range valores {
+		if valor <= 0 || vistos[valor] {
+			continue
+		}
+		vistos[valor] = true
+		resultado = append(resultado, valor)
+	}
+	return resultado
+}
+
+func proyectosOrdenadosInterface(proyectos map[int]bool) []interface{} {
+	resultado := make([]interface{}, 0, len(proyectos))
+	for proyectoID := range proyectos {
+		resultado = append(resultado, proyectoID)
+	}
+	return resultado
 }
 
 func validarDesasociacionActividad(idActividad string, actividad map[string]interface{}, dependenciaNueva string) error {

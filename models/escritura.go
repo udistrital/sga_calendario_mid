@@ -16,3 +16,9 @@ type ProcesoPeriodicidadRequest struct {
 type ActividadDependenciasRequest struct {
 	DependenciaId string `json:"DependenciaId"`
 }
+
+type ActividadesProgramasMasivoRequest struct {
+	ProgramaIds  []int  `json:"ProgramaIds"`
+	ActividadIds []int  `json:"ActividadIds"`
+	Operacion    string `json:"Operacion"`
+}

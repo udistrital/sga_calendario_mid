@@ -25,6 +25,8 @@ func (c *ConsultaCalendarioAcademicoController) URLMapping() {
 	c.Mapping("PutProcesoPeriodicidad", c.PutProcesoPeriodicidad)
 	c.Mapping("PutProcesoEstado", c.PutProcesoEstado)
 	c.Mapping("PutActividadDependencias", c.PutActividadDependencias)
+	c.Mapping("PostValidarActividadesProgramasMasivo", c.PostValidarActividadesProgramasMasivo)
+	c.Mapping("PostActividadesProgramasMasivo", c.PostActividadesProgramasMasivo)
 	c.Mapping("GetFacultadesSecretario", c.GetFacultadesSecretario)
 	c.Mapping("GetFacultadesDecano", c.GetFacultadesDecano)
 	c.Mapping("GetEventosCrud", c.GetEventosCrud)
@@ -190,6 +192,53 @@ func (c *ConsultaCalendarioAcademicoController) PutActividadDependencias() {
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
+	} else {
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
+	}
+	c.ServeJSON()
+}
+
+// PostValidarActividadesProgramasMasivo ...
+// @Title PostValidarActividadesProgramasMasivo
+// @Description Validar asociaciones masivas entre programas académicos y actividades del calendario
+// @Param	id		path 	string	true	"Id del calendario"
+// @Param   body    body    {}      true	"body { ProgramaIds: [], ActividadIds: [] }"
+// @Success 200 {}
+// @Failure 404 recurso no encontrado
+// @router /calendario/:id/actividades-programas/masivo/validar [post]
+func (c *ConsultaCalendarioAcademicoController) PostValidarActividadesProgramasMasivo() {
+	defer errorhandler.HandlePanic(&c.Controller)
+	resultado, err := services.PostValidarActividadesProgramasMasivo(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody)
+	if err == nil {
+		c.Ctx.Output.SetStatus(200)
+		c.Data["json"] = resultado
+	} else {
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())
+	}
+	c.ServeJSON()
+}
+
+// PostActividadesProgramasMasivo ...
+// @Title PostActividadesProgramasMasivo
+// @Description Asociar o desasociar programas académicos a múltiples actividades del calendario
+// @Param	id		path 	string	true	"Id del calendario"
+// @Param   body    body    {}      true	"body { ProgramaIds: [], ActividadIds: [], Operacion: asociar|desasociar }"
+// @Success 200 {}
+// @Failure 404 recurso no encontrado
+// @Failure 409 operación bloqueada por impactos
+// @router /calendario/:id/actividades-programas/masivo [post]
+func (c *ConsultaCalendarioAcademicoController) PostActividadesProgramasMasivo() {
+	defer errorhandler.HandlePanic(&c.Controller)
+	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
+	resultado, err := services.PostActividadesProgramasMasivo(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario)
+	if err == nil {
+		c.Ctx.Output.SetStatus(200)
+		c.Data["json"] = resultado
+	} else if impacto, ok := err.(*services.ImpactoDesasociacionCalendarioError); ok {
+		c.Ctx.Output.SetStatus(409)
+		c.Data["json"] = requestresponse.APIResponseDTO(false, 409, impacto.Data(), impacto.Error())
 	} else {
 		c.Ctx.Output.SetStatus(404)
 		c.Data["json"] = requestresponse.APIResponseDTO(true, 404, nil, err.Error())

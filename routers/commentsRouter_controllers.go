@@ -126,6 +126,24 @@ func init() {
 
 	beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"],
 		beego.ControllerComments{
+			Method:           "PostValidarActividadesProgramasMasivo",
+			Router:           "/calendario/:id/actividades-programas/masivo/validar",
+			AllowHTTPMethods: []string{"post"},
+			MethodParams:     param.Make(),
+			Filters:          nil,
+			Params:           nil})
+
+	beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"],
+		beego.ControllerComments{
+			Method:           "PostActividadesProgramasMasivo",
+			Router:           "/calendario/:id/actividades-programas/masivo",
+			AllowHTTPMethods: []string{"post"},
+			MethodParams:     param.Make(),
+			Filters:          nil,
+			Params:           nil})
+
+	beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"],
+		beego.ControllerComments{
 			Method:           "PutCalendarioDependencias",
 			Router:           "/calendario/:id/dependencias",
 			AllowHTTPMethods: []string{"put"},
@@ -180,9 +198,9 @@ func init() {
 
 	beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"],
 		beego.ControllerComments{
-			Method:           "PutEventosCrud",
+			Method:           "DeleteEventosCrud",
 			Router:           "/eventos/:recurso/:id",
-			AllowHTTPMethods: []string{"put"},
+			AllowHTTPMethods: []string{"delete"},
 			MethodParams:     param.Make(),
 			Filters:          nil,
 			Params:           nil})
@@ -198,9 +216,9 @@ func init() {
 
 	beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"],
 		beego.ControllerComments{
-			Method:           "DeleteEventosCrud",
+			Method:           "PutEventosCrud",
 			Router:           "/eventos/:recurso/:id",
-			AllowHTTPMethods: []string{"delete"},
+			AllowHTTPMethods: []string{"put"},
 			MethodParams:     param.Make(),
 			Filters:          nil,
 			Params:           nil})
