@@ -13,6 +13,13 @@ type SolicitudExtensionActividad struct {
 	Dependencias []interface{} `json:"Dependencias"`
 }
 
+type SolicitudExtensionActividadRequest struct {
+	FechaFin     string `json:"FechaFin"`
+	DocumentoId  int    `json:"DocumentoId"`
+	Descripcion  string `json:"Descripcion"`
+	Dependencias []int  `json:"Dependencias"`
+}
+
 func (s *SolicitudExtensionActividad) UnmarshalJSON(data []byte) error {
 	type solicitudAlias SolicitudExtensionActividad
 	aux := struct {

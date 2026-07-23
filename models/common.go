@@ -7,3 +7,5 @@ type RelacionID struct {
 type APIErrorMarker struct {
 	Type string `json:"Type,omitempty"`
 }
+
+type GenericPayload struct{}

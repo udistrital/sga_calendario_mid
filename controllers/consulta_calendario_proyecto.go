@@ -21,10 +21,11 @@ func (c *ConsultaCalendarioProyectoController) URLMapping() {
 
 // GetCalendarByProjectId ...
 // @Title GetCalendarByProjectId
-// @Description get ConsultaCalendarioAcademico by id
-// @Param	id		path 	string	true		"The key for staticblock"
+// @Description Consulta el calendario académico asociado a un programa académico para un periodo opcional.
+// @Param	id		path 	string	true		"Id del programa académico"
+// @Param	id-periodo	query	string	false	"Id del periodo académico"
 // @Success 200
-// @Failure 403 :id is empty
+// @Failure 404 recurso no encontrado
 // @router /:id [get]
 func (c *ConsultaCalendarioProyectoController) GetCalendarByProjectId() {
 	defer errorhandler.HandlePanic(&c.Controller)
@@ -46,11 +47,12 @@ func (c *ConsultaCalendarioProyectoController) GetCalendarByProjectId() {
 
 // GetCalendarProject ...
 // @Title GetCalendarProject
-// @Description get ConsultaCalendarioAcademico & id y Project By Id
-// @Param	id-nivel	query	string	false	"Se recivbe parametro Id de el nivel"
-// @Param	id-periodo	query	string	false	"Se recivbe parametro Id de el Periodo"
+// @Description Consulta calendarios académicos por nivel y periodo.
+// @Param	id-nivel	query	string	true	"Id del nivel académico"
+// @Param	id-periodo	query	string	true	"Id del periodo académico"
 // @Success 200
-// @Failure 403 :id is empty
+// @Failure 400 parámetros requeridos vacíos
+// @Failure 404 recurso no encontrado
 // @router /calendario/proyecto [get]
 func (c *ConsultaCalendarioProyectoController) GetCalendarProject() {
 	defer errorhandler.HandlePanic(&c.Controller)

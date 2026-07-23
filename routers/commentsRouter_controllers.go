@@ -126,8 +126,8 @@ func init() {
 
 	beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"],
 		beego.ControllerComments{
-			Method:           "PostValidarActividadesProgramasMasivo",
-			Router:           "/calendario/:id/actividades-programas/masivo/validar",
+			Method:           "PostActividadesProgramasMasivo",
+			Router:           "/calendario/:id/actividades-programas/masivo",
 			AllowHTTPMethods: []string{"post"},
 			MethodParams:     param.Make(),
 			Filters:          nil,
@@ -135,8 +135,8 @@ func init() {
 
 	beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_calendario_mid/controllers:ConsultaCalendarioAcademicoController"],
 		beego.ControllerComments{
-			Method:           "PostActividadesProgramasMasivo",
-			Router:           "/calendario/:id/actividades-programas/masivo",
+			Method:           "PostValidarActividadesProgramasMasivo",
+			Router:           "/calendario/:id/actividades-programas/masivo/validar",
 			AllowHTTPMethods: []string{"post"},
 			MethodParams:     param.Make(),
 			Filters:          nil,

@@ -22,10 +22,10 @@ func (c *EventoController) URLMapping() {
 
 // PostEvento ...
 // @Title PostEvento
-// @Description Agregar Evento
-// @Param   body        body    {}  true        "body Agregar Evento content"
+// @Description Crea un evento compuesto usando tr_evento del CRUD de eventos.
+// @Param	body	body	models.GenericPayload	true	"Payload con Evento, EncargadosEvento y TiposPublico"
 // @Success 200 {}
-// @Failure 403 body is empty
+// @Failure 404 recurso no encontrado o solicitud inválida
 // @router / [post]
 func (c *EventoController) PostEvento() {
 	defer errorhandler.HandlePanic(&c.Controller)
@@ -48,11 +48,11 @@ func (c *EventoController) PostEvento() {
 
 // PutEvento ...
 // @Title PutEvento
-// @Description Modificar Evento
-// @Param	id		path 	string	true		"el id del evento a modificar"
-// @Param   body        body    {}  true        "body Modificar Evento content"
+// @Description Actualiza un evento compuesto usando tr_evento del CRUD de eventos.
+// @Param	id		path 	string	true		"Id del evento a modificar"
+// @Param	body	body	models.GenericPayload	true	"Payload con Evento, EncargadosEvento, TiposPublico y elementos borrados cuando aplique"
 // @Success 200 {}
-// @Failure 403 :id is empty
+// @Failure 404 recurso no encontrado o solicitud inválida
 // @router /:id [put]
 func (c *EventoController) PutEvento() {
 	defer errorhandler.HandlePanic(&c.Controller)
@@ -76,10 +76,10 @@ func (c *EventoController) PutEvento() {
 
 // GetEvento ...
 // @Title GetEvento
-// @Description consultar Evento por persona
-// @Param   persona      path    string  true        "Persona"
+// @Description Consulta eventos asociados a una persona.
+// @Param	persona	path	string	true	"Identificador de la persona"
 // @Success 200 {}
-// @Failure 403 :persona is empty
+// @Failure 404 recurso no encontrado
 // @router /evento/persona/:persona [get]
 func (c *EventoController) GetEvento() {
 	defer errorhandler.HandlePanic(&c.Controller)
@@ -101,10 +101,10 @@ func (c *EventoController) GetEvento() {
 
 // DeleteEvento ...
 // @Title DeleteEvento
-// @Description eliminar Evento por id
-// @Param   id      path    string  true        "Id del Evento"
+// @Description Elimina o inactiva un evento compuesto por id usando el servicio de eventos.
+// @Param	id	path	string	true	"Id del evento"
 // @Success 200 {}
-// @Failure 403 :id is empty
+// @Failure 404 recurso no encontrado
 // @router /:id [delete]
 func (c *EventoController) DeleteEvento() {
 	defer errorhandler.HandlePanic(&c.Controller)

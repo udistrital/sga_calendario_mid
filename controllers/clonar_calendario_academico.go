@@ -19,10 +19,10 @@ func (c *ClonarCalendarioController) URLMapping() {
 
 // PostCalendario ...
 // @Title PostCalendario
-// @Description Clona calendario, crea proceso si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene
-// @Param	body		body 	{}	true		"body id calendario content"
-// @Success 201 {int}
-// @Failure 400 the request contains incorrect syntax
+// @Description Clona procesos, actividades y públicos dirigidos desde el calendario activo del periodo/nivel destino hacia el calendario indicado.
+// @Param	body		body 	models.GenericPayload	true		"Datos de clonación: Id, PeriodoIdClone y NivelClone"
+// @Success 200 {}
+// @Failure 404 recurso no encontrado o solicitud inválida
 // @router / [post]
 func (c *ClonarCalendarioController) PostCalendario() {
 	defer errorhandler.HandlePanic(&c.Controller)
@@ -46,10 +46,10 @@ func (c *ClonarCalendarioController) PostCalendario() {
 
 // PostCalendarioPadre ...
 // @Title PostCalendarioPadre
-// @Description Clona calendario padre, crea proceso si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene
-// @Param	body		body 	{}	true		"body id calendario content"
+// @Description Clona procesos, actividades y públicos dirigidos desde un calendario padre hacia un calendario destino existente o creado por la solicitud.
+// @Param	body		body 	models.GenericPayload	true		"Datos de clonación padre: IdPadre y datos del calendario destino"
 // @Success 200 {}
-// @Failure 400 the request contains incorrect syntax
+// @Failure 404 recurso no encontrado o solicitud inválida
 // @router /padre [post]
 func (c *ClonarCalendarioController) PostCalendarioPadre() {
 	defer errorhandler.HandlePanic(&c.Controller)

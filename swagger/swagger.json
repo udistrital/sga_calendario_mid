@@ -20,16 +20,16 @@
                 "tags": [
                     "actividad-calendario"
                 ],
-                "description": "Agregar actividad calendario, tipo_publico y tabla de rompimiento calendario_evento_tipo_publico",
+                "description": "Crea una actividad de calendario (calendario_evento) y sus relaciones de público dirigido (calendario_evento_tipo_publico).",
                 "operationId": "ActividadCalendarioController.PostActividadCalendario",
                 "parameters": [
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body Agregar Actividad calendario content",
+                        "description": "Payload con Actividad y responsable[]",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
@@ -37,8 +37,8 @@
                     "200": {
                         "description": "{}"
                     },
-                    "403": {
-                        "description": "body is empty"
+                    "404": {
+                        "description": "recurso no encontrado o solicitud inválida"
                     }
                 }
             }
@@ -48,16 +48,23 @@
                 "tags": [
                     "actividad-calendario"
                 ],
-                "description": "Actualiza tabla de rompimiento calendario_evento_tipo_publico segun los responsables de una Actividad",
+                "description": "Actualiza las relaciones de público dirigido (calendario_evento_tipo_publico) de una actividad.",
                 "operationId": "ActividadCalendarioController.UpdateActividadResponsables",
                 "parameters": [
                     {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id de la actividad",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
                         "in": "body",
                         "name": "body",
-                        "description": "body Actualizar responsables de una Actividad content",
+                        "description": "Payload con responsable[] y responsables eliminados cuando aplique",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
@@ -65,8 +72,8 @@
                     "200": {
                         "description": "{}"
                     },
-                    "403": {
-                        "description": "body is empty"
+                    "404": {
+                        "description": "recurso no encontrado o solicitud inválida"
                     }
                 }
             }
@@ -76,7 +83,7 @@
                 "tags": [
                     "actividad-calendario"
                 ],
-                "description": "Consulta extensiones de una actividad",
+                "description": "Consulta extensiones activas e históricas de una actividad.",
                 "operationId": "ActividadCalendarioController.GetExtensionesActividad",
                 "parameters": [
                     {
@@ -100,7 +107,7 @@
                 "tags": [
                     "actividad-calendario"
                 ],
-                "description": "Crea una extensión de fecha fin para una actividad y programas autorizados",
+                "description": "Crea una extensión de fecha fin para una actividad y los programas académicos autorizados.",
                 "operationId": "ActividadCalendarioController.PostExtensionActividad",
                 "parameters": [
                     {
@@ -113,10 +120,10 @@
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body extensión",
+                        "description": "Solicitud de extensión: FechaFin, DocumentoId, Descripcion y Dependencias",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.SolicitudExtensionActividadRequest"
                         }
                     }
                 ],
@@ -135,7 +142,7 @@
                 "tags": [
                     "actividad-calendario"
                 ],
-                "description": "Actualiza datos editables de una extensión de actividad",
+                "description": "Actualiza datos editables de una extensión de actividad y sus programas académicos autorizados.",
                 "operationId": "ActividadCalendarioController.PutExtensionActividad",
                 "parameters": [
                     {
@@ -155,10 +162,10 @@
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body extensión",
+                        "description": "Solicitud de extensión: FechaFin, DocumentoId, Descripcion y Dependencias",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.SolicitudExtensionActividadRequest"
                         }
                     }
                 ],
@@ -175,7 +182,7 @@
                 "tags": [
                     "actividad-calendario"
                 ],
-                "description": "Inactiva una extensión de actividad y sus relaciones",
+                "description": "Inactiva una extensión de actividad y sus relaciones.",
                 "operationId": "ActividadCalendarioController.DeleteExtensionActividad",
                 "parameters": [
                     {
@@ -208,7 +215,7 @@
                 "tags": [
                     "actividad-calendario"
                 ],
-                "description": "Inactiva una extensión de actividad y sus relaciones usando PUT para evitar restricciones de gateway con DELETE",
+                "description": "Inactiva una extensión de actividad y sus relaciones usando PUT para evitar restricciones de gateway con DELETE.",
                 "operationId": "ActividadCalendarioController.AnularExtensionActividad",
                 "parameters": [
                     {
@@ -241,7 +248,7 @@
                 "tags": [
                     "actividad-calendario"
                 ],
-                "description": "Consulta rango permitido para una actividad y dependencia",
+                "description": "Consulta el rango de fechas permitido para una actividad y un programa académico, considerando extensiones vigentes.",
                 "operationId": "ActividadCalendarioController.GetRangoActividadDependencia",
                 "parameters": [
                     {
@@ -274,7 +281,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "get todos los calendarios académicos junto a sus periodos correspondientes",
+                "description": "Consulta todos los calendarios académicos junto con su periodo y metadatos asociados.",
                 "operationId": "ConsultaCalendarioAcademicoController.GetAll",
                 "parameters": [
                     {
@@ -316,13 +323,10 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
-                        "schema": {
-                            "$ref": "#/definitions/models.ConsultaCalendarioAcademico"
-                        }
+                        "description": "{}"
                     },
                     "404": {
-                        "description": ""
+                        "description": "recurso no encontrado"
                     }
                 }
             }
@@ -332,7 +336,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Actualizar DependenciaId de una actividad (calendario_evento)",
+                "description": "Actualiza los programas académicos asociados a una actividad (calendario_evento), validando fechas particulares y extensiones vigentes.",
                 "operationId": "ConsultaCalendarioAcademicoController.PutActividadDependencias",
                 "parameters": [
                     {
@@ -345,10 +349,48 @@
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body { DependenciaId: string }",
+                        "description": "DependenciaId contiene JSON serializado con proyectos y fechas particulares de la actividad",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.ActividadDependenciasRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
+                    },
+                    "409": {
+                        "description": "operación bloqueada por impactos de desasociación"
+                    }
+                }
+            }
+        },
+        "/calendario-academico/calendario/academico/{id}/inhabilitar": {
+            "put": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Inhabilita un calendario académico y sus procesos y actividades asociadas.",
+                "operationId": "ConsultaCalendarioAcademicoController.PutInhabilitarCalendario",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id del calendario académico a inhabilitar",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "Payload recibido desde cliente; se usa para validar solicitud y registrar operación",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
@@ -362,28 +404,28 @@
                 }
             }
         },
-        "/calendario-academico/calendario/academico/{id}/inhabilitar": {
-            "put": {
+        "/calendario-academico/calendario/{id}/actividades-programas/masivo": {
+            "post": {
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Inhabilitar Calendario",
-                "operationId": "ConsultaCalendarioAcademicoController.PutInhabilitarCalendario",
+                "description": "Asocia o desasocia programas académicos a múltiples actividades del calendario. La operación es atómica: si hay impactos bloqueantes no actualiza ninguna actividad.",
+                "operationId": "ConsultaCalendarioAcademicoController.PostActividadesProgramasMasivo",
                 "parameters": [
                     {
                         "in": "path",
                         "name": "id",
-                        "description": "el id del calendario a inhabilitar",
+                        "description": "Id del calendario",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body Inhabilitar calendario content",
+                        "description": "Operacion: asociar o desasociar; ProgramaIds y ActividadIds son arreglos de enteros.",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.ActividadesProgramasMasivoRequest"
                         }
                     }
                 ],
@@ -391,8 +433,46 @@
                     "200": {
                         "description": "{}"
                     },
-                    "403": {
-                        "description": ":id is empty"
+                    "404": {
+                        "description": "recurso no encontrado"
+                    },
+                    "409": {
+                        "description": "operación bloqueada por impactos"
+                    }
+                }
+            }
+        },
+        "/calendario-academico/calendario/{id}/actividades-programas/masivo/validar": {
+            "post": {
+                "tags": [
+                    "calendario-academico"
+                ],
+                "description": "Prevalida asociaciones o desasociaciones masivas entre programas académicos y actividades del calendario sin persistir cambios.",
+                "operationId": "ConsultaCalendarioAcademicoController.PostValidarActividadesProgramasMasivo",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Id del calendario",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "Programas y actividades a validar. Operacion puede ser asociar o desasociar.",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ActividadesProgramasMasivoRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
                     }
                 }
             }
@@ -402,7 +482,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Actualizar DependenciaId (proyectos asociados) de un calendario",
+                "description": "Actualiza los programas académicos asociados a un calendario. Bloquea retiros con fechas particulares modificadas o extensiones vigentes.",
                 "operationId": "ConsultaCalendarioAcademicoController.PutCalendarioDependencias",
                 "parameters": [
                     {
@@ -415,10 +495,10 @@
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body { DependenciaId: string }",
+                        "description": "DependenciaId contiene JSON serializado con proyectos y fechas del calendario",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.CalendarioDependenciasRequest"
                         }
                     }
                 ],
@@ -428,6 +508,9 @@
                     },
                     "404": {
                         "description": "recurso no encontrado"
+                    },
+                    "409": {
+                        "description": "operación bloqueada por impactos de desasociación"
                     }
                 }
             }
@@ -437,7 +520,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Cambiar estado (Activo/Inactivo) de un calendario académico",
+                "description": "Activa o inactiva un calendario académico. Si no se envía Activo, alterna el estado actual; al inactivar también inactiva procesos y actividades asociadas.",
                 "operationId": "ConsultaCalendarioAcademicoController.PutCalendarioEstado",
                 "parameters": [
                     {
@@ -450,10 +533,10 @@
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body { Activo: bool }",
+                        "description": "Estado objetivo del calendario; Activo es opcional",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.EstadoActivoRequest"
                         }
                     }
                 ],
@@ -498,7 +581,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Proxy de consulta GET a recursos del CRUD de eventos (calendario, proceso, calendario_evento, catálogos)",
+                "description": "Proxy de consulta GET a recursos del CRUD de eventos (calendario, proceso, calendario_evento, catálogos y relaciones autorizadas).",
                 "operationId": "ConsultaCalendarioAcademicoController.GetEventosCrud",
                 "parameters": [
                     {
@@ -511,7 +594,25 @@
                     {
                         "in": "query",
                         "name": "query",
-                        "description": "Filter. e.g. col1:v1,col2:v2 ...",
+                        "description": "Filtro en formato eventos_crud. e.g. col1:v1,col2:v2 ...",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "fields",
+                        "description": "Campos retornados. e.g. col1,col2 ...",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "sortby",
+                        "description": "Campos de ordenamiento. e.g. col1,col2 ...",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "order",
+                        "description": "Orden por campo. e.g. desc,asc ...",
                         "type": "string"
                     },
                     {
@@ -540,7 +641,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Proxy de creación POST a recursos del CRUD de eventos",
+                "description": "Proxy de creación POST a recursos permitidos del CRUD de eventos, con registro de auditoría.",
                 "operationId": "ConsultaCalendarioAcademicoController.PostEventosCrud",
                 "parameters": [
                     {
@@ -553,10 +654,10 @@
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body datos del recurso a crear",
+                        "description": "Datos del recurso a crear en eventos_crud",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
@@ -575,7 +676,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Proxy de consulta GET por ID a recursos del CRUD de eventos",
+                "description": "Proxy de consulta GET por ID a recursos del CRUD de eventos.",
                 "operationId": "ConsultaCalendarioAcademicoController.GetEventosCrudId",
                 "parameters": [
                     {
@@ -590,6 +691,12 @@
                         "name": "id",
                         "description": "Id del recurso",
                         "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "query",
+                        "description": "Parámetros adicionales enviados al CRUD de eventos",
                         "type": "string"
                     }
                 ],
@@ -606,7 +713,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Proxy de actualización PUT a recursos del CRUD de eventos",
+                "description": "Proxy de actualización PUT a recursos permitidos del CRUD de eventos, con registro de auditoría de la entidad actualizada.",
                 "operationId": "ConsultaCalendarioAcademicoController.PutEventosCrud",
                 "parameters": [
                     {
@@ -626,10 +733,10 @@
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body datos actualizados del recurso",
+                        "description": "Datos actualizados del recurso en eventos_crud",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
@@ -646,7 +753,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Proxy de eliminación DELETE a recursos del CRUD de eventos",
+                "description": "Proxy de eliminación DELETE a recursos permitidos del CRUD de eventos, con registro de auditoría.",
                 "operationId": "ConsultaCalendarioAcademicoController.DeleteEventosCrud",
                 "parameters": [
                     {
@@ -679,16 +786,16 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Proyecto obtener el Id de calendario padre, crear el nuevo calendario (hijo) e inactivar el calendario padre",
+                "description": "Crea un calendario académico independiente/hijo para periodo y nivel, validando que no exista otro activo equivalente.",
                 "operationId": "ConsultaCalendarioAcademicoController.PostCalendarioHijo",
                 "parameters": [
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body crear calendario hijo content",
+                        "description": "Datos del calendario: Nombre, DocumentoId, PeriodoId, Nivel y Activo",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
@@ -696,8 +803,8 @@
                     "200": {
                         "description": "{}"
                     },
-                    "403": {
-                        "description": ":body is empty"
+                    "404": {
+                        "description": "recurso no encontrado"
                     }
                 }
             }
@@ -707,16 +814,16 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Crear un nuevo proceso asociado a un calendario académico",
+                "description": "Crea un proceso asociado a un calendario académico, validando fechas y registrando auditoría.",
                 "operationId": "ConsultaCalendarioAcademicoController.PostProcesoCalendario",
                 "parameters": [
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body datos del proceso",
+                        "description": "Datos del proceso para eventos_crud/proceso",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
@@ -735,7 +842,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Cambiar estado (Activo/Inactivo) de un proceso",
+                "description": "Activa o inactiva un proceso. Si no se envía Activo, alterna el estado actual; al inactivar también inactiva actividades asociadas.",
                 "operationId": "ConsultaCalendarioAcademicoController.PutProcesoEstado",
                 "parameters": [
                     {
@@ -748,10 +855,10 @@
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body { Activo: bool }",
+                        "description": "Estado objetivo del proceso; Activo es opcional",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.EstadoActivoRequest"
                         }
                     }
                 ],
@@ -770,7 +877,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Actualizar el TipoRecurrenciaId de un proceso",
+                "description": "Actualiza la periodicidad (TipoRecurrenciaId) de un proceso y registra auditoría.",
                 "operationId": "ConsultaCalendarioAcademicoController.PutProcesoPeriodicidad",
                 "parameters": [
                     {
@@ -783,10 +890,10 @@
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body { TipoRecurrenciaId: { Id: int } }",
+                        "description": "Periodicidad objetivo con TipoRecurrenciaId.Id",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.ProcesoPeriodicidadRequest"
                         }
                     }
                 ],
@@ -831,7 +938,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "get obtener información calendario académico por id",
+                "description": "Consulta información resumida de un calendario académico por id.",
                 "operationId": "ConsultaCalendarioAcademicoController.GetCalendarInfo",
                 "parameters": [
                     {
@@ -847,7 +954,7 @@
                         "description": "{}"
                     },
                     "404": {
-                        "description": "not found resource"
+                        "description": "recurso no encontrado"
                     }
                 }
             }
@@ -857,13 +964,13 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "get obtener calendario académico por id",
+                "description": "Consulta un calendario académico por id, incluyendo procesos, actividades y metadatos relacionados.",
                 "operationId": "ConsultaCalendarioAcademicoController.GetOnePorId",
                 "parameters": [
                     {
                         "in": "path",
                         "name": "id",
-                        "description": "The key for staticblock",
+                        "description": "Id del calendario académico",
                         "required": true,
                         "type": "string"
                     }
@@ -872,8 +979,8 @@
                     "200": {
                         "description": "{}"
                     },
-                    "403": {
-                        "description": ":id is empty"
+                    "404": {
+                        "description": "recurso no encontrado"
                     }
                 }
             }
@@ -883,19 +990,21 @@
                 "tags": [
                     "calendario-proyecto"
                 ],
-                "description": "get ConsultaCalendarioAcademico \u0026 id y Project By Id",
+                "description": "Consulta calendarios académicos por nivel y periodo.",
                 "operationId": "ConsultaCalendarioProyectoController.GetCalendarProject",
                 "parameters": [
                     {
                         "in": "query",
                         "name": "id-nivel",
-                        "description": "Se recivbe parametro Id de el nivel",
+                        "description": "Id del nivel académico",
+                        "required": true,
                         "type": "string"
                     },
                     {
                         "in": "query",
                         "name": "id-periodo",
-                        "description": "Se recivbe parametro Id de el Periodo",
+                        "description": "Id del periodo académico",
+                        "required": true,
                         "type": "string"
                     }
                 ],
@@ -903,8 +1012,11 @@
                     "200": {
                         "description": ""
                     },
-                    "403": {
-                        "description": ":id is empty"
+                    "400": {
+                        "description": "parámetros requeridos vacíos"
+                    },
+                    "404": {
+                        "description": "recurso no encontrado"
                     }
                 }
             }
@@ -914,14 +1026,20 @@
                 "tags": [
                     "calendario-proyecto"
                 ],
-                "description": "get ConsultaCalendarioAcademico by id",
+                "description": "Consulta el calendario académico asociado a un programa académico para un periodo opcional.",
                 "operationId": "ConsultaCalendarioProyectoController.GetCalendarByProjectId",
                 "parameters": [
                     {
                         "in": "path",
                         "name": "id",
-                        "description": "The key for staticblock",
+                        "description": "Id del programa académico",
                         "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "id-periodo",
+                        "description": "Id del periodo académico",
                         "type": "string"
                     }
                 ],
@@ -929,8 +1047,8 @@
                     "200": {
                         "description": ""
                     },
-                    "403": {
-                        "description": ":id is empty"
+                    "404": {
+                        "description": "recurso no encontrado"
                     }
                 }
             }
@@ -940,25 +1058,25 @@
                 "tags": [
                     "clonar-calendario"
                 ],
-                "description": "Clona calendario, crea proceso si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene",
+                "description": "Clona procesos, actividades y públicos dirigidos desde el calendario activo del periodo/nivel destino hacia el calendario indicado.",
                 "operationId": "ClonarCalendarioController.PostCalendario",
                 "parameters": [
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body id calendario content",
+                        "description": "Datos de clonación: Id, PeriodoIdClone y NivelClone",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "{int}"
+                    "200": {
+                        "description": "{}"
                     },
-                    "400": {
-                        "description": "the request contains incorrect syntax"
+                    "404": {
+                        "description": "recurso no encontrado o solicitud inválida"
                     }
                 }
             }
@@ -968,16 +1086,16 @@
                 "tags": [
                     "clonar-calendario"
                 ],
-                "description": "Clona calendario padre, crea proceso si lo tiene, crea calendario_evento si tiene, crea calendario_evento_tipo_publico si tiene, crea tipo_publico si lo tiene",
+                "description": "Clona procesos, actividades y públicos dirigidos desde un calendario padre hacia un calendario destino existente o creado por la solicitud.",
                 "operationId": "ClonarCalendarioController.PostCalendarioPadre",
                 "parameters": [
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body id calendario content",
+                        "description": "Datos de clonación padre: IdPadre y datos del calendario destino",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
@@ -985,8 +1103,8 @@
                     "200": {
                         "description": "{}"
                     },
-                    "400": {
-                        "description": "the request contains incorrect syntax"
+                    "404": {
+                        "description": "recurso no encontrado o solicitud inválida"
                     }
                 }
             }
@@ -996,16 +1114,16 @@
                 "tags": [
                     "evento"
                 ],
-                "description": "Agregar Evento",
+                "description": "Crea un evento compuesto usando tr_evento del CRUD de eventos.",
                 "operationId": "EventoController.PostEvento",
                 "parameters": [
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body Agregar Evento content",
+                        "description": "Payload con Evento, EncargadosEvento y TiposPublico",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
@@ -1013,8 +1131,8 @@
                     "200": {
                         "description": "{}"
                     },
-                    "403": {
-                        "description": "body is empty"
+                    "404": {
+                        "description": "recurso no encontrado o solicitud inválida"
                     }
                 }
             }
@@ -1024,13 +1142,13 @@
                 "tags": [
                     "evento"
                 ],
-                "description": "consultar Evento por persona",
+                "description": "Consulta eventos asociados a una persona.",
                 "operationId": "EventoController.GetEvento",
                 "parameters": [
                     {
                         "in": "path",
                         "name": "persona",
-                        "description": "Persona",
+                        "description": "Identificador de la persona",
                         "required": true,
                         "type": "string"
                     }
@@ -1039,8 +1157,8 @@
                     "200": {
                         "description": "{}"
                     },
-                    "403": {
-                        "description": ":persona is empty"
+                    "404": {
+                        "description": "recurso no encontrado"
                     }
                 }
             }
@@ -1050,23 +1168,23 @@
                 "tags": [
                     "evento"
                 ],
-                "description": "Modificar Evento",
+                "description": "Actualiza un evento compuesto usando tr_evento del CRUD de eventos.",
                 "operationId": "EventoController.PutEvento",
                 "parameters": [
                     {
                         "in": "path",
                         "name": "id",
-                        "description": "el id del evento a modificar",
+                        "description": "Id del evento a modificar",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "body Modificar Evento content",
+                        "description": "Payload con Evento, EncargadosEvento, TiposPublico y elementos borrados cuando aplique",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/{}"
+                            "$ref": "#/definitions/models.GenericPayload"
                         }
                     }
                 ],
@@ -1074,8 +1192,8 @@
                     "200": {
                         "description": "{}"
                     },
-                    "403": {
-                        "description": ":id is empty"
+                    "404": {
+                        "description": "recurso no encontrado o solicitud inválida"
                     }
                 }
             },
@@ -1083,13 +1201,13 @@
                 "tags": [
                     "evento"
                 ],
-                "description": "eliminar Evento por id",
+                "description": "Elimina o inactiva un evento compuesto por id usando el servicio de eventos.",
                 "operationId": "EventoController.DeleteEvento",
                 "parameters": [
                     {
                         "in": "path",
                         "name": "id",
-                        "description": "Id del Evento",
+                        "description": "Id del evento",
                         "required": true,
                         "type": "string"
                     }
@@ -1098,21 +1216,112 @@
                     "200": {
                         "description": "{}"
                     },
-                    "403": {
-                        "description": ":id is empty"
+                    "404": {
+                        "description": "recurso no encontrado"
                     }
                 }
             }
         }
     },
     "definitions": {
-        "models.ConsultaCalendarioAcademico": {
-            "title": "ConsultaCalendarioAcademico",
+        "models.ActividadDependenciasRequest": {
+            "title": "ActividadDependenciasRequest",
+            "type": "object",
+            "properties": {
+                "DependenciaId": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ActividadesProgramasMasivoRequest": {
+            "title": "ActividadesProgramasMasivoRequest",
+            "type": "object",
+            "properties": {
+                "ActividadIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "Operacion": {
+                    "type": "string"
+                },
+                "ProgramaIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            }
+        },
+        "models.CalendarioDependenciasRequest": {
+            "title": "CalendarioDependenciasRequest",
+            "type": "object",
+            "properties": {
+                "DependenciaId": {
+                    "type": "string"
+                },
+                "Forzar": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.EstadoActivoRequest": {
+            "title": "EstadoActivoRequest",
+            "type": "object",
+            "properties": {
+                "Activo": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.GenericPayload": {
+            "title": "GenericPayload",
             "type": "object"
         },
-        "{}": {
-            "title": "{}",
-            "type": "object"
+        "models.ProcesoPeriodicidadRequest": {
+            "title": "ProcesoPeriodicidadRequest",
+            "type": "object",
+            "properties": {
+                "TipoRecurrenciaId": {
+                    "$ref": "#/definitions/models.RelacionID"
+                }
+            }
+        },
+        "models.RelacionID": {
+            "title": "RelacionID",
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "integer",
+                    "format": "int64"
+                }
+            }
+        },
+        "models.SolicitudExtensionActividadRequest": {
+            "title": "SolicitudExtensionActividadRequest",
+            "type": "object",
+            "properties": {
+                "Dependencias": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "Descripcion": {
+                    "type": "string"
+                },
+                "DocumentoId": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "FechaFin": {
+                    "type": "string"
+                }
+            }
         }
     },
     "tags": [
