@@ -103,9 +103,9 @@ func PerfilesConfiguracionSGA(authHeader string) ([]models.PerfilConfiguracion, 
 		if codigo == "" || codigo == "<nil>" {
 			codigo = nombre
 		}
-		perfilID, _ := interfaceToInt(perfil["Id"])
+		perfilID, _ := helpers.InterfaceToInt(perfil["Id"])
 		if perfilID == 0 {
-			perfilID, _ = interfaceToInt(perfil["id"])
+			perfilID, _ = helpers.InterfaceToInt(perfil["id"])
 		}
 		resultado = append(resultado, models.PerfilConfiguracion{
 			Id:                perfilID,
@@ -125,10 +125,10 @@ func aplicacionConfiguracionID(alias string, authHeader string) (int, error) {
 	if len(aplicaciones) == 0 || len(aplicaciones[0]) == 0 {
 		return 0, errors.New("No se encontró la aplicación de Configuración con alias " + alias)
 	}
-	if id, ok := interfaceToInt(aplicaciones[0]["Id"]); ok {
+	if id, ok := helpers.InterfaceToInt(aplicaciones[0]["Id"]); ok {
 		return id, nil
 	}
-	if id, ok := interfaceToInt(aplicaciones[0]["id"]); ok {
+	if id, ok := helpers.InterfaceToInt(aplicaciones[0]["id"]); ok {
 		return id, nil
 	}
 	return 0, errors.New("La aplicación de Configuración no tiene identificador válido")
@@ -154,7 +154,7 @@ func PostEventosCrud(recurso string, data []byte, usuario string) (interface{}, 
 	if err := validarFechasPayloadEventos(recurso, "", payload); err != nil {
 		return nil, err
 	}
-	normalizarFechasTimeCalendarioEvento(recurso, payload)
+	helpers.NormalizeFechasTimeCalendarioEvento(recurso, payload)
 
 	var recibido interface{}
 	if err := request.SendJson(beego.AppConfig.String("EventoService")+recurso, "POST", &recibido, payload); err != nil || recibido == nil {
@@ -162,7 +162,7 @@ func PostEventosCrud(recurso string, data []byte, usuario string) (interface{}, 
 	}
 
 	if recursosAuditables[recurso] {
-		if id, ok := extractId(recibido); ok {
+		if id, ok := helpers.ExtractID(recibido); ok {
 			RegistrarAuditoria(recurso, id, "POST", nil, recibido, usuario, "PostEventosCrud/"+recurso)
 		}
 	}
@@ -185,8 +185,8 @@ func PutEventosCrud(recurso string, id string, data []byte, usuario string) (int
 	if err := validarFechasPayloadEventos(recurso, id, payload); err != nil {
 		return nil, err
 	}
-	normalizarFechasTimeCalendarioEvento(recurso, payload)
-	if activo, ok := activoFromPayload(payload); ok && activo {
+	helpers.NormalizeFechasTimeCalendarioEvento(recurso, payload)
+	if activo, ok := helpers.ActivoFromPayload(payload); ok && activo {
 		switch recurso {
 		case "proceso":
 			if err := validarActivacionProceso(id); err != nil {
@@ -225,30 +225,6 @@ func entidadActualizadaEventos(recurso string, id string, fallback interface{}) 
 	return actualizado
 }
 
-func normalizarFechasTimeCalendarioEvento(recurso string, payload interface{}) {
-	if recurso != "calendario_evento" {
-		return
-	}
-	payloadMap, ok := payload.(map[string]interface{})
-	if !ok {
-		return
-	}
-	for _, campo := range []string{"FechaInicio", "FechaFin"} {
-		if value, ok := payloadMap[campo]; ok && value != nil {
-			payloadMap[campo] = helpers.FechaTimeParaCRUD(value)
-		}
-	}
-}
-
-func activoFromPayload(payload interface{}) (bool, bool) {
-	m, ok := payload.(map[string]interface{})
-	if !ok {
-		return false, false
-	}
-	activo, ok := m["Activo"].(bool)
-	return activo, ok
-}
-
 func DeleteEventosCrud(recurso string, id string, usuario string) (interface{}, error) {
 	if err := validarRecursoEventos(recurso); err != nil {
 		return nil, err
@@ -272,8 +248,4 @@ func DeleteEventosCrud(recurso string, id string, usuario string) (interface{}, 
 	}
 
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
-}
-
-func extractId(v interface{}) (int, bool) {
-	return helpers.ExtractID(v)
 }

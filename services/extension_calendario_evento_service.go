@@ -48,7 +48,7 @@ func PostExtensionActividad(idActividad string, data []byte, usuario string, aut
 	dependencias := make([]int, 0, len(solicitud.Dependencias))
 	padres := make(map[int]interface{})
 	for _, dependenciaRaw := range solicitud.Dependencias {
-		dependenciaID, ok := interfaceToInt(dependenciaRaw)
+		dependenciaID, ok := helpers.InterfaceToInt(dependenciaRaw)
 		if !ok || dependenciaID <= 0 {
 			return nil, errors.New("error del servicio PostExtensionActividad: dependencia inválida")
 		}
@@ -73,7 +73,7 @@ func PostExtensionActividad(idActividad string, data []byte, usuario string, aut
 	extensionPayload := models.CalendarioEventoExtensionPayload{
 		CalendarioEventoId: models.RelacionID{Id: idActividadInt},
 		FechaFin:           fechaFinPayload,
-		DocumentoId:        documentoIdOrNil(solicitud.DocumentoId),
+		DocumentoId:        helpers.DocumentoIDOrNil(solicitud.DocumentoId),
 		Descripcion:        solicitud.Descripcion,
 		NumeroExtension:    numeroExtension,
 		Activo:             true,
@@ -83,7 +83,7 @@ func PostExtensionActividad(idActividad string, data []byte, usuario string, aut
 	if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_extension", "POST", &extension, extensionPayload); err != nil || extension == nil || extension["Type"] == "error" {
 		return nil, errors.New("error del servicio PostExtensionActividad: no fue posible crear la extensión")
 	}
-	extensionID, ok := idToString(extension["Id"])
+	extensionID, ok := helpers.IDToString(extension["Id"])
 	if !ok {
 		return nil, errors.New("error del servicio PostExtensionActividad: extensión creada sin identificador")
 	}
@@ -104,7 +104,7 @@ func PostExtensionActividad(idActividad string, data []byte, usuario string, aut
 			Activo:                      true,
 		}
 		if padre := padres[dependenciaID]; padre != nil {
-			if padreID, ok := interfaceToInt(padre); ok {
+			if padreID, ok := helpers.InterfaceToInt(padre); ok {
 				relacionPayload.ExtensionPadreId = &models.RelacionID{Id: padreID}
 			}
 		}
@@ -112,7 +112,7 @@ func PostExtensionActividad(idActividad string, data []byte, usuario string, aut
 		if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_extension_programa", "POST", &relacion, relacionPayload); err != nil || relacion == nil || relacion["Type"] == "error" {
 			return nil, errors.New("error del servicio PostExtensionActividad: no fue posible asociar dependencia a la extensión")
 		}
-		if id, ok := extractId(relacion); ok {
+		if id, ok := helpers.ExtractID(relacion); ok {
 			RegistrarAuditoria("calendario_evento_extension_programa", id, "POST", nil, relacion, usuario, "PostExtensionActividad/calendario_evento_extension_programa")
 		}
 	}
@@ -172,7 +172,7 @@ func PutExtensionActividad(idActividad string, idExtension string, data []byte, 
 	}
 
 	for _, relacion := range relaciones {
-		dependenciaID, _ := interfaceToInt(relacion["DependenciaId"])
+		dependenciaID, _ := helpers.InterfaceToInt(relacion["DependenciaId"])
 		if !actividadIncluyeDependencia(actividad, dependenciaID) {
 			return nil, errors.New("No se puede editar la extensión: una dependencia asociada a la extensión ya no pertenece a la actividad.")
 		}
@@ -189,9 +189,9 @@ func PutExtensionActividad(idActividad string, idExtension string, data []byte, 
 		}
 	}
 
-	anterior := deepCopyMap(extension)
+	anterior := helpers.DeepCopyMap(extension)
 	extension["FechaFin"] = fechaFinPayload
-	extension["DocumentoId"] = documentoIdOrNil(solicitud.DocumentoId)
+	extension["DocumentoId"] = helpers.DocumentoIDOrNil(solicitud.DocumentoId)
 	extension["Descripcion"] = solicitud.Descripcion
 	extension["CalendarioEventoId"] = map[string]interface{}{"Id": idActividadInt}
 	var resultado map[string]interface{}
@@ -216,15 +216,15 @@ func DeleteExtensionActividad(idActividad string, idExtension string, usuario st
 		return nil, err
 	}
 	for _, relacion := range relaciones {
-		idRelacion, ok := idToString(relacion["Id"])
+		idRelacion, ok := helpers.IDToString(relacion["Id"])
 		if !ok {
 			continue
 		}
 		idRelacionInt, _ := strconv.Atoi(idRelacion)
-		anteriorRelacion := deepCopyMap(relacion)
+		anteriorRelacion := helpers.DeepCopyMap(relacion)
 		eraVigente := relacion["Vigente"] == true
 		padre := relacion["ExtensionPadreId"]
-		dependenciaID, _ := interfaceToInt(relacion["DependenciaId"])
+		dependenciaID, _ := helpers.InterfaceToInt(relacion["DependenciaId"])
 		relacionPayload := models.CalendarioEventoExtensionProgramaPayload{
 			Id:                          idRelacionInt,
 			CalendarioEventoId:          models.RelacionID{Id: idActividadInt},
@@ -248,13 +248,13 @@ func DeleteExtensionActividad(idActividad string, idExtension string, usuario st
 			reactivarRelacionPadre(idActividad, relacion, padre, usuario)
 		}
 	}
-	anterior := deepCopyMap(extension)
-	numeroExtension, _ := interfaceToInt(extension["NumeroExtension"])
+	anterior := helpers.DeepCopyMap(extension)
+	numeroExtension, _ := helpers.InterfaceToInt(extension["NumeroExtension"])
 	extensionPayload := models.CalendarioEventoExtensionPayload{
 		Id:                 idExtensionInt,
 		CalendarioEventoId: models.RelacionID{Id: idActividadInt},
 		FechaFin:           fechaParaModeloSinError(extension["FechaFin"]),
-		DocumentoId:        documentoIdOrNil(extension["DocumentoId"]),
+		DocumentoId:        helpers.DocumentoIDOrNil(extension["DocumentoId"]),
 		Descripcion:        fmt.Sprintf("%v", extension["Descripcion"]),
 		NumeroExtension:    numeroExtension,
 		Activo:             false,
@@ -333,11 +333,11 @@ func actividadIncluyeDependencia(actividad map[string]interface{}, dependenciaID
 	if dependenciaID <= 0 {
 		return false
 	}
-	dependenciaMap, ok := parseDependenciaEvento(actividad["DependenciaId"])
+	dependenciaMap, ok := helpers.ParseDependenciaEventoMap(actividad["DependenciaId"])
 	if !ok {
 		return false
 	}
-	return dependenciaIncluyeProyecto(dependenciaMap, dependenciaID)
+	return helpers.DependenciaMapIncluyeProyecto(dependenciaMap, dependenciaID)
 }
 
 func siguienteNumeroExtension(idActividad string) (int, error) {
@@ -349,7 +349,7 @@ func siguienteNumeroExtension(idActividad string) (int, error) {
 	if len(extensiones) == 0 || len(extensiones[0]) == 0 {
 		return 1, nil
 	}
-	numero, ok := interfaceToInt(extensiones[0]["NumeroExtension"])
+	numero, ok := helpers.InterfaceToInt(extensiones[0]["NumeroExtension"])
 	if !ok {
 		return 1, nil
 	}
@@ -363,11 +363,11 @@ func inactivarVigenciaExtensionDependencia(idActividad string, dependenciaID int
 		return errors.New("error del servicio PostExtensionActividad: no fue posible consultar vigencias previas")
 	}
 	for _, relacion := range relaciones {
-		idRelacion, ok := idToString(relacion["Id"])
+		idRelacion, ok := helpers.IDToString(relacion["Id"])
 		if !ok {
 			continue
 		}
-		anterior := deepCopyMap(relacion)
+		anterior := helpers.DeepCopyMap(relacion)
 		relacion["Vigente"] = false
 		var resultado map[string]interface{}
 		if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_extension_programa/"+idRelacion, "PUT", &resultado, relacion); err != nil || resultado == nil || resultado["Type"] == "error" {
@@ -396,7 +396,7 @@ func extensionesActividad(idActividad string) ([]map[string]interface{}, error) 
 		return nil, errors.New("error consultando extensiones de actividad")
 	}
 	for i := range extensiones {
-		idExtension, ok := idToString(extensiones[i]["Id"])
+		idExtension, ok := helpers.IDToString(extensiones[i]["Id"])
 		if !ok {
 			continue
 		}
@@ -416,7 +416,7 @@ func obtenerExtensionActividad(idActividad string, idExtension string) (map[stri
 		return nil, errors.New("error consultando extensión de actividad")
 	}
 	actividad, ok := extension["CalendarioEventoId"].(map[string]interface{})
-	actividadID, idOk := interfaceToInt(actividad["Id"])
+	actividadID, idOk := helpers.InterfaceToInt(actividad["Id"])
 	idActividadInt, err := strconv.Atoi(idActividad)
 	if !ok || !idOk || err != nil || actividadID != idActividadInt {
 		return nil, errors.New("error consultando extensión de actividad: la extensión no pertenece a la actividad")
@@ -441,11 +441,11 @@ func reactivarRelacionPadre(idActividad string, relacion map[string]interface{},
 	if !ok || padreMap == nil {
 		return
 	}
-	padreID, ok := idToString(padreMap["Id"])
+	padreID, ok := helpers.IDToString(padreMap["Id"])
 	if !ok {
 		return
 	}
-	dependenciaID, ok := interfaceToInt(relacion["DependenciaId"])
+	dependenciaID, ok := helpers.InterfaceToInt(relacion["DependenciaId"])
 	if !ok {
 		return
 	}
@@ -454,11 +454,11 @@ func reactivarRelacionPadre(idActividad string, relacion map[string]interface{},
 	if err := request.GetJson(url, &relacionesPadre); err != nil || len(relacionesPadre) == 0 || len(relacionesPadre[0]) == 0 {
 		return
 	}
-	idRelacionPadre, ok := idToString(relacionesPadre[0]["Id"])
+	idRelacionPadre, ok := helpers.IDToString(relacionesPadre[0]["Id"])
 	if !ok {
 		return
 	}
-	anterior := deepCopyMap(relacionesPadre[0])
+	anterior := helpers.DeepCopyMap(relacionesPadre[0])
 	relacionesPadre[0]["Vigente"] = true
 	var resultado map[string]interface{}
 	if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_extension_programa/"+idRelacionPadre, "PUT", &resultado, relacionesPadre[0]); err == nil && resultado != nil && resultado["Type"] != "error" {
@@ -562,10 +562,6 @@ func normalizarCalendarioEventoSalida(calendario map[string]interface{}) {
 	}
 }
 
-func documentoIdOrNil(value interface{}) interface{} {
-	return helpers.DocumentoIDOrNil(value)
-}
-
 func validarRangoFechasDependencia(idActividad string, dependenciaID int, fechaInicio string, fechaFin string) error {
 	actividad, err := obtenerActividad(idActividad)
 	if err != nil {
@@ -600,11 +596,11 @@ func inactivarExtensionesActividad(idActividad string, usuario string, endpoint 
 		return nil
 	}
 	for _, extension := range extensiones {
-		idExtension, ok := idToString(extension["Id"])
+		idExtension, ok := helpers.IDToString(extension["Id"])
 		if !ok {
 			continue
 		}
-		anterior := deepCopyMap(extension)
+		anterior := helpers.DeepCopyMap(extension)
 		extension["Activo"] = false
 		var resultado map[string]interface{}
 		if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_extension/"+idExtension, "PUT", &resultado, extension); err == nil && resultado != nil && resultado["Type"] != "error" {
@@ -619,11 +615,11 @@ func inactivarExtensionesActividad(idActividad string, usuario string, endpoint 
 		return nil
 	}
 	for _, relacion := range relaciones {
-		idRelacion, ok := idToString(relacion["Id"])
+		idRelacion, ok := helpers.IDToString(relacion["Id"])
 		if !ok {
 			continue
 		}
-		anterior := deepCopyMap(relacion)
+		anterior := helpers.DeepCopyMap(relacion)
 		relacion["Activo"] = false
 		relacion["Vigente"] = false
 		var resultado map[string]interface{}

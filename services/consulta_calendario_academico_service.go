@@ -10,6 +10,7 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
+	"github.com/udistrital/sga_calendario_mid/helpers"
 	"github.com/udistrital/sga_calendario_mid/models"
 	"github.com/udistrital/utils_oas/request"
 	"github.com/udistrital/utils_oas/requestresponse"
@@ -337,7 +338,7 @@ func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) 
 		if errCalendario == nil {
 			if calendario != nil {
 
-				calendarioAnterior := deepCopyMap(calendario)
+				calendarioAnterior := helpers.DeepCopyMap(calendario)
 				calendario["Activo"] = false
 
 				errCalendario := request.SendJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, "PUT", &resultado, calendario)
@@ -356,7 +357,7 @@ func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) 
 
 								idProceso := fmt.Sprintf("%.f", proceso["Id"].(float64))
 
-								procesoAnterior := deepCopyMap(proceso)
+								procesoAnterior := helpers.DeepCopyMap(proceso)
 								proceso["Activo"] = false
 
 								errCalendario := request.SendJson(beego.AppConfig.String("EventoService")+"proceso/"+idProceso, "PUT", &resultado, proceso)
@@ -375,7 +376,7 @@ func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) 
 
 												idCalendarioEvento := fmt.Sprintf("%.f", cEvento["Id"].(float64))
 
-												cEventoAnterior := deepCopyMap(cEvento)
+												cEventoAnterior := helpers.DeepCopyMap(cEvento)
 												cEvento["Activo"] = false
 
 												errCalendario := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+idCalendarioEvento, "PUT", &resultado, cEvento)
@@ -523,7 +524,7 @@ func datosProcesoCatalogo(proceso interface{}) (string, string, string) {
 }
 
 func responsablesActividad(actividad map[string]interface{}) []map[string]interface{} {
-	idActividad, ok := idToString(actividad["Id"])
+	idActividad, ok := helpers.IDToString(actividad["Id"])
 	if !ok {
 		return []map[string]interface{}{}
 	}
@@ -537,7 +538,7 @@ func responsablesActividad(actividad map[string]interface{}) []map[string]interf
 
 	responsables := make([]map[string]interface{}, 0, len(relaciones))
 	for _, relacion := range relaciones {
-		perfilID, ok := interfaceToInt(relacion["PerfilId"])
+		perfilID, ok := helpers.InterfaceToInt(relacion["PerfilId"])
 		if !ok || perfilID <= 0 {
 			continue
 		}

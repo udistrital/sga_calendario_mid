@@ -10,65 +10,9 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"github.com/udistrital/sga_calendario_mid/helpers"
-	"github.com/udistrital/sga_calendario_mid/models"
 	"github.com/udistrital/utils_oas/request"
 	"github.com/udistrital/utils_oas/requestresponse"
 )
-
-func parseDependenciaEvento(dependencia interface{}) (map[string]interface{}, bool) {
-	dependenciaModel, ok := helpers.ParseDependenciaEvento(dependencia)
-	if !ok {
-		return nil, false
-	}
-	var dependenciaMap map[string]interface{}
-	data, _ := json.Marshal(dependenciaModel)
-	if err := json.Unmarshal(data, &dependenciaMap); err != nil {
-		logs.Error("error parseando DependenciaId de evento: ", err)
-		return nil, false
-	}
-	return dependenciaMap, true
-}
-
-func interfaceToInt(value interface{}) (int, bool) {
-	return helpers.InterfaceToInt(value)
-}
-
-func dependenciaIncluyeProyecto(dependenciaMap map[string]interface{}, proyectoID int) bool {
-	dependenciaModel, ok := dependenciaMapToModel(dependenciaMap)
-	if !ok {
-		return false
-	}
-	return helpers.DependenciaIncluyeProyecto(dependenciaModel, proyectoID)
-}
-
-func fechaParticularProyecto(dependenciaMap map[string]interface{}, proyectoID int) (map[string]interface{}, bool) {
-	dependenciaModel, ok := dependenciaMapToModel(dependenciaMap)
-	if !ok {
-		return nil, false
-	}
-	fechaModel, ok := helpers.FechaParticularProyecto(dependenciaModel, proyectoID)
-	if !ok {
-		return nil, false
-	}
-	var fechaMap map[string]interface{}
-	data, _ := json.Marshal(fechaModel)
-	if err := json.Unmarshal(data, &fechaMap); err != nil {
-		return nil, false
-	}
-	return fechaMap, true
-}
-
-func dependenciaMapToModel(dependenciaMap map[string]interface{}) (models.DependenciaEvento, bool) {
-	if dependenciaMap == nil {
-		return models.DependenciaEvento{}, false
-	}
-	data, _ := json.Marshal(dependenciaMap)
-	var dependenciaModel models.DependenciaEvento
-	if err := json.Unmarshal(data, &dependenciaModel); err != nil {
-		return models.DependenciaEvento{}, false
-	}
-	return dependenciaModel, true
-}
 
 func GetCalendarByProjectId(idCalendario int, idPeriodo string) (interface{}, error) {
 	var calendarios []map[string]interface{}
@@ -82,10 +26,10 @@ func GetCalendarByProjectId(idCalendario int, idPeriodo string) (interface{}, er
 	errCalendarios := request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query="+query+"&limit=0&sortby=Id&order=desc", &calendarios)
 	if errCalendarios == nil {
 		for _, calendario := range calendarios {
-			dependencia, ok := parseDependenciaEvento(calendario["DependenciaId"])
-			if ok && dependenciaIncluyeProyecto(dependencia, idCalendario) {
+			dependencia, ok := helpers.ParseDependenciaEventoMap(calendario["DependenciaId"])
+			if ok && helpers.DependenciaMapIncluyeProyecto(dependencia, idCalendario) {
 				CalendarioId = fmt.Sprintf("%v", calendario["Id"])
-				if id, ok := interfaceToInt(calendario["Id"]); ok {
+				if id, ok := helpers.InterfaceToInt(calendario["Id"]); ok {
 					CalendarioId = strconv.Itoa(id)
 				}
 			}
@@ -169,8 +113,8 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 								procesosPorId := make(map[string]map[string]interface{})
 								var lista_procesos []map[string]interface{}
 								for _, Evento := range calendarioEventos {
-									dependenciaEvento, ok := parseDependenciaEvento(Evento["DependenciaId"])
-									if ok && !dependenciaIncluyeProyecto(dependenciaEvento, proyectosArrMap[i]["ProyectoId"].(int)) {
+									dependenciaEvento, ok := helpers.ParseDependenciaEventoMap(Evento["DependenciaId"])
+									if ok && !helpers.DependenciaMapIncluyeProyecto(dependenciaEvento, proyectosArrMap[i]["ProyectoId"].(int)) {
 										continue
 									}
 
@@ -184,7 +128,7 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 											procesoId = fmt.Sprintf("%.f", id)
 										}
 									}
-									if fechaParticular, ok := fechaParticularProyecto(dependenciaEvento, proyectosArrMap[i]["ProyectoId"].(int)); ok {
+									if fechaParticular, ok := helpers.FechaParticularProyectoMap(dependenciaEvento, proyectosArrMap[i]["ProyectoId"].(int)); ok {
 										evento_x := map[string]interface{}{
 											"ActividadParticular": true,
 											"EventoId":            Evento["Id"],

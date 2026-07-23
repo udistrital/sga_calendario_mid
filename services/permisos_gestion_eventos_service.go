@@ -156,7 +156,7 @@ func perfilGestionaEventoCatalogo(eventoCatalogoID string, perfilesUsuario map[i
 		return false
 	}
 	for _, relacion := range relaciones {
-		perfilID, ok := interfaceToInt(relacion["PerfilId"])
+		perfilID, ok := helpers.InterfaceToInt(relacion["PerfilId"])
 		if ok && perfilesUsuario[perfilID] {
 			return true
 		}

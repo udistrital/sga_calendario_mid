@@ -34,7 +34,7 @@ func PostActividadCalendario(data []byte, usuario string) (interface{}, error) {
 		if err := validarCatalogoActividadProceso(actividadMap); err != nil {
 			return nil, err
 		}
-		normalizarFechasTimeCalendarioEvento("calendario_evento", actividadMap)
+		helpers.NormalizeFechasTimeCalendarioEvento("calendario_evento", actividadMap)
 		//Solicitid post a eventos service enviando el json recibido
 		errActividad := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento", "POST", &actividadCalendarioPost, Actividad)
 		if errActividad == nil && fmt.Sprintf("%v", actividadCalendarioPost["System"]) != "map[]" && actividadCalendarioPost["Id"] != nil {
@@ -53,11 +53,11 @@ func PostActividadCalendario(data []byte, usuario string) (interface{}, error) {
 
 		for _, publicoTemp := range totalPublico {
 			publicoMap := publicoTemp.(map[string]interface{})
-			perfilID, ok := interfaceToInt(publicoMap["responsableID"])
+			perfilID, ok := helpers.InterfaceToInt(publicoMap["responsableID"])
 			if !ok || perfilID <= 0 {
 				return nil, errors.New("error del servicio PostActividadCalendario: perfil de público dirigido inválido")
 			}
-			idActividadInt, _ := interfaceToInt(IdActividad)
+			idActividadInt, _ := helpers.InterfaceToInt(IdActividad)
 			CalendarioEventoTipoPersona := models.CalendarioEventoTipoPublicoPayload{
 				Activo:             activoRelacionPublico(publicoMap),
 				PerfilId:           perfilID,
@@ -163,7 +163,7 @@ func UpdateActividadResponsables(idStr string, data []byte, usuario string) (int
 			if errBorrado == nil {
 				for _, tipoPublico := range datos {
 					publicoMap := tipoPublico.(map[string]interface{})
-					perfilID, ok := interfaceToInt(publicoMap["responsableID"])
+					perfilID, ok := helpers.InterfaceToInt(publicoMap["responsableID"])
 					if !ok || perfilID <= 0 {
 						return nil, errors.New("error del servicio UpdateActividadResponsables: perfil de público dirigido inválido")
 					}
