@@ -7,12 +7,14 @@ import (
 	"time"
 )
 
+const formatoFechaHoraCalendario = "2006-01-02T15:04:05"
+
 var GMTMinus5Location = time.FixedZone("GMT-5", -5*60*60)
 
 func ParseFecha(fecha string) (time.Time, error) {
 	fecha = limpiarFechaGo(fecha)
 	if fechaLocal, ok := fechaHoraLocal(fecha); ok {
-		parsed, err := time.ParseInLocation("2006-01-02T15:04:05", fechaLocal, GMTMinus5Location)
+		parsed, err := time.ParseInLocation(formatoFechaHoraCalendario, fechaLocal, GMTMinus5Location)
 		if err == nil {
 			return parsed, nil
 		}
@@ -39,10 +41,10 @@ func ParseFecha(fecha string) (time.Time, error) {
 
 func fechaHoraLocal(fecha string) (string, bool) {
 	fecha = strings.TrimSpace(fecha)
-	if len(fecha) < len("2006-01-02T15:04:05") {
+	if len(fecha) < len(formatoFechaHoraCalendario) {
 		return "", false
 	}
-	fecha = fecha[:len("2006-01-02T15:04:05")]
+	fecha = fecha[:len(formatoFechaHoraCalendario)]
 	if fecha[10] == ' ' {
 		fecha = strings.Replace(fecha, " ", "T", 1)
 	}
@@ -76,11 +78,29 @@ func FechaTimeParaCRUD(value interface{}) string {
 }
 
 func FechaTimeParaModelo(value interface{}) (time.Time, error) {
-	return time.Parse(time.RFC3339, FechaTimeParaCRUD(value))
+	fecha := strings.TrimSuffix(FechaTimeParaCRUD(value), "Z")
+	return time.ParseInLocation(formatoFechaHoraCalendario, fecha, time.UTC)
+}
+
+func FechaDependenciaActividad(value interface{}) string {
+	fecha := strings.TrimSpace(fmt.Sprintf("%v", value))
+	if fecha == "" || fecha == "<nil>" {
+		return ""
+	}
+	fechaCRUD := FechaTimeParaCRUD(fecha)
+	if fechaCRUD != fecha {
+		return strings.TrimSuffix(fechaCRUD, "Z")
+	}
+	fecha = strings.Replace(fecha, " ", "T", 1)
+	if len(fecha) >= len(formatoFechaHoraCalendario) {
+		return fecha[:len(formatoFechaHoraCalendario)]
+	}
+	return fecha
 }
 
 func FormatFechaGMTMinus5(fecha time.Time) string {
-	return fecha.In(GMTMinus5Location).Format("2006-01-02T15:04:05-07:00")
+	fechaLocal := time.Date(fecha.Year(), fecha.Month(), fecha.Day(), fecha.Hour(), fecha.Minute(), fecha.Second(), fecha.Nanosecond(), GMTMinus5Location)
+	return fechaLocal.Format("2006-01-02T15:04:05-07:00")
 }
 
 func ValidarRangoFechas(fechaInicio string, fechaFin string) error {
