@@ -769,6 +769,15 @@
                         "description": "Id del recurso",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "Payload con TerceroId para registrar la operación",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.GenericPayload"
+                        }
                     }
                 ],
                 "responses": {
@@ -1230,6 +1239,10 @@
             "properties": {
                 "DependenciaId": {
                     "type": "string"
+                },
+                "TerceroId": {
+                    "type": "integer",
+                    "format": "int64"
                 }
             }
         },
@@ -1253,6 +1266,10 @@
                         "type": "integer",
                         "format": "int64"
                     }
+                },
+                "TerceroId": {
+                    "type": "integer",
+                    "format": "int64"
                 }
             }
         },
@@ -1265,6 +1282,10 @@
                 },
                 "Forzar": {
                     "type": "boolean"
+                },
+                "TerceroId": {
+                    "type": "integer",
+                    "format": "int64"
                 }
             }
         },
@@ -1274,12 +1295,22 @@
             "properties": {
                 "Activo": {
                     "type": "boolean"
+                },
+                "TerceroId": {
+                    "type": "integer",
+                    "format": "int64"
                 }
             }
         },
         "models.GenericPayload": {
             "title": "GenericPayload",
-            "type": "object"
+            "type": "object",
+            "properties": {
+                "TerceroId": {
+                    "type": "integer",
+                    "format": "int64"
+                }
+            }
         },
         "models.ProcesoPeriodicidadRequest": {
             "title": "ProcesoPeriodicidadRequest",

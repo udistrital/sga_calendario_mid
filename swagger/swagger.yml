@@ -530,6 +530,12 @@ paths:
         description: Id del recurso
         required: true
         type: string
+      - in: body
+        name: body
+        description: Payload con TerceroId para registrar la operación
+        required: true
+        schema:
+          $ref: '#/definitions/models.GenericPayload'
       responses:
         "200":
           description: '{}'
@@ -813,6 +819,9 @@ definitions:
     properties:
       DependenciaId:
         type: string
+      TerceroId:
+        type: integer
+        format: int64
   models.ActividadesProgramasMasivoRequest:
     title: ActividadesProgramasMasivoRequest
     type: object
@@ -829,6 +838,9 @@ definitions:
         items:
           type: integer
           format: int64
+      TerceroId:
+        type: integer
+        format: int64
   models.CalendarioDependenciasRequest:
     title: CalendarioDependenciasRequest
     type: object
@@ -837,15 +849,25 @@ definitions:
         type: string
       Forzar:
         type: boolean
+      TerceroId:
+        type: integer
+        format: int64
   models.EstadoActivoRequest:
     title: EstadoActivoRequest
     type: object
     properties:
       Activo:
         type: boolean
+      TerceroId:
+        type: integer
+        format: int64
   models.GenericPayload:
     title: GenericPayload
     type: object
+    properties:
+      TerceroId:
+        type: integer
+        format: int64
   models.ProcesoPeriodicidadRequest:
     title: ProcesoPeriodicidadRequest
     type: object
