@@ -333,6 +333,10 @@ func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) 
 	var success bool = true
 	alertas := []interface{}{"Response:"}
 	if err := json.Unmarshal(data, &dataPut); err == nil {
+		terceroID, terceroErr := helpers.TerceroIDFromPayload(dataPut)
+		if terceroErr != nil {
+			return nil, errors.New("error del servicio PutInhabilitarCalendario: " + terceroErr.Error())
+		}
 
 		errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario)
 		if errCalendario == nil {
@@ -378,6 +382,7 @@ func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) 
 
 												cEventoAnterior := helpers.DeepCopyMap(cEvento)
 												cEvento["Activo"] = false
+												helpers.SetTerceroID(cEvento, terceroID)
 
 												errCalendario := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+idCalendarioEvento, "PUT", &resultado, cEvento)
 												if resultado["Type"] == "error" || errCalendario != nil || resultado["Status"] == "404" || resultado["Message"] != nil {

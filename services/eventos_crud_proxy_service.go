@@ -225,12 +225,27 @@ func entidadActualizadaEventos(recurso string, id string, fallback interface{}) 
 	return actualizado
 }
 
-func DeleteEventosCrud(recurso string, id string, usuario string) (interface{}, error) {
+func DeleteEventosCrud(recurso string, id string, data []byte, usuario string) (interface{}, error) {
 	if err := validarRecursoEventos(recurso); err != nil {
 		return nil, err
 	}
 	if id == "" {
 		return nil, errors.New("id requerido")
+	}
+	var payload interface{}
+	if len(strings.TrimSpace(string(data))) > 0 {
+		if err := json.Unmarshal(data, &payload); err != nil {
+			return nil, errors.New("solicitud inválida")
+		}
+	}
+	if recurso == "calendario_evento" {
+		terceroID, err := helpers.TerceroIDFromPayload(payload)
+		if err != nil {
+			return nil, err
+		}
+		if payloadMap, ok := payload.(map[string]interface{}); ok {
+			helpers.SetTerceroID(payloadMap, terceroID)
+		}
 	}
 	var anterior interface{}
 	if recursosAuditables[recurso] {
@@ -238,7 +253,7 @@ func DeleteEventosCrud(recurso string, id string, usuario string) (interface{}, 
 	}
 
 	var resultado interface{}
-	if err := request.SendJson(beego.AppConfig.String("EventoService")+recurso+"/"+id, "DELETE", &resultado, nil); err != nil || resultado == nil {
+	if err := request.SendJson(beego.AppConfig.String("EventoService")+recurso+"/"+id, "DELETE", &resultado, payload); err != nil || resultado == nil {
 		return nil, errors.New("no fue posible eliminar el recurso de eventos")
 	}
 

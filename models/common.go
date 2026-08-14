@@ -8,4 +8,6 @@ type APIErrorMarker struct {
 	Type string `json:"Type,omitempty"`
 }
 
-type GenericPayload struct{}
+type GenericPayload struct {
+	TerceroId int `json:"TerceroId"`
+}

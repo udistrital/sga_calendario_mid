@@ -25,6 +25,10 @@ func PostCalendario(data []byte, usuario string) (interface{}, error) {
 	if err := json.Unmarshal(data, &dataPost); err != nil {
 		return nil, errors.New("error del servicio PostCalendario: solicitud inválida")
 	}
+	terceroID, err := helpers.TerceroIDFromPayload(dataPost)
+	if err != nil {
+		return nil, errors.New("error del servicio PostCalendario: " + err.Error())
+	}
 	idCalendario, ok := helpers.IDToString(dataPost["Id"])
 	if !ok {
 		return nil, errors.New("error del servicio PostCalendario: calendario destino inválido")
@@ -94,6 +98,7 @@ func PostCalendario(data []byte, usuario string) (interface{}, error) {
 			actividadOrigen["FechaInicio"] = fechaGenericaClonacion
 			actividadOrigen["FechaFin"] = fechaGenericaClonacion
 			actividadOrigen["DependenciaId"] = dependenciaVaciaEvento
+			helpers.SetTerceroID(actividadOrigen, terceroID)
 
 			var actividadClonada map[string]interface{}
 			if err := request.SendJson(beego.AppConfig.String("EventoService")+"/calendario_evento", "POST", &actividadClonada, actividadOrigen); err != nil || helpers.EventosPostResponseInvalid(actividadClonada) {
@@ -136,6 +141,10 @@ func PostCalendarioPadre(data []byte, usuario string) (interface{}, error) {
 
 	var dataPost map[string]interface{}
 	if err := json.Unmarshal(data, &dataPost); err == nil {
+		terceroID, terceroErr := helpers.TerceroIDFromPayload(dataPost)
+		if terceroErr != nil {
+			return nil, errors.New("error del servicio PostCalendarioPadre: " + terceroErr.Error())
+		}
 		idCalendario, err := calendarioDestinoClonacion(dataPost, usuario)
 		if err != nil {
 			return nil, err
@@ -182,6 +191,7 @@ func PostCalendarioPadre(data []byte, usuario string) (interface{}, error) {
 														cEvento["FechaInicio"] = fechaGenericaClonacion
 														cEvento["FechaFin"] = fechaGenericaClonacion
 														cEvento["DependenciaId"] = dependenciaVaciaEvento
+														helpers.SetTerceroID(cEvento, terceroID)
 
 														errCalendarioEventoPost := request.SendJson(beego.AppConfig.String("EventoService")+"/calendario_evento", "POST", &resultadoPost, cEvento)
 														if errCalendarioEventoPost == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {

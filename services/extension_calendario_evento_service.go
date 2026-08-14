@@ -315,7 +315,7 @@ func rangoPermitidoActividadDependencia(idActividad string, dependenciaID int, a
 	}
 
 	var relaciones []map[string]interface{}
-	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,Vigente:true,CalendarioEventoId__Id:" + idActividad + ",DependenciaId:" + strconv.Itoa(dependenciaID) + "&limit=1"
+	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,Vigente:true,CalendarioEventoExtensionId__CalendarioEventoId__Id:" + idActividad + ",DependenciaId:" + strconv.Itoa(dependenciaID) + "&limit=1"
 	if err := request.GetJson(url, &relaciones); err != nil || len(relaciones) == 0 || len(relaciones[0]) == 0 {
 		return rango, nil
 	}
@@ -358,7 +358,7 @@ func siguienteNumeroExtension(idActividad string) (int, error) {
 
 func inactivarVigenciaExtensionDependencia(idActividad string, dependenciaID int, usuario string) error {
 	var relaciones []map[string]interface{}
-	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,Vigente:true,CalendarioEventoId__Id:" + idActividad + ",DependenciaId:" + strconv.Itoa(dependenciaID) + "&limit=0"
+	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,Vigente:true,CalendarioEventoExtensionId__CalendarioEventoId__Id:" + idActividad + ",DependenciaId:" + strconv.Itoa(dependenciaID) + "&limit=0"
 	if err := request.GetJson(url, &relaciones); err != nil {
 		return errors.New("error del servicio PostExtensionActividad: no fue posible consultar vigencias previas")
 	}
@@ -382,7 +382,7 @@ func inactivarVigenciaExtensionDependencia(idActividad string, dependenciaID int
 
 func tieneExtensionVigenteDependencia(idActividad string, dependenciaID int) (bool, error) {
 	var relaciones []map[string]interface{}
-	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,Vigente:true,CalendarioEventoId__Id:" + idActividad + ",DependenciaId:" + strconv.Itoa(dependenciaID) + "&limit=1"
+	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,Vigente:true,CalendarioEventoExtensionId__CalendarioEventoId__Id:" + idActividad + ",DependenciaId:" + strconv.Itoa(dependenciaID) + "&limit=1"
 	if err := request.GetJson(url, &relaciones); err != nil {
 		return false, errors.New("error del servicio PutActividadDependencias: no fue posible consultar extensiones vigentes")
 	}
@@ -429,7 +429,7 @@ func obtenerExtensionActividad(idActividad string, idExtension string) (map[stri
 
 func relacionesExtensionActividad(idActividad string, idExtension string) ([]map[string]interface{}, error) {
 	var relaciones []map[string]interface{}
-	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,CalendarioEventoId__Id:" + idActividad + ",CalendarioEventoExtensionId__Id:" + idExtension + "&limit=0"
+	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,CalendarioEventoExtensionId__CalendarioEventoId__Id:" + idActividad + ",CalendarioEventoExtensionId__Id:" + idExtension + "&limit=0"
 	if err := request.GetJson(url, &relaciones); err != nil {
 		return nil, errors.New("error consultando dependencias de la extensión")
 	}
@@ -450,7 +450,7 @@ func reactivarRelacionPadre(idActividad string, relacion map[string]interface{},
 		return
 	}
 	var relacionesPadre []map[string]interface{}
-	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,Vigente:false,CalendarioEventoId__Id:" + idActividad + ",CalendarioEventoExtensionId__Id:" + padreID + ",DependenciaId:" + strconv.Itoa(dependenciaID) + "&limit=1"
+	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,Vigente:false,CalendarioEventoExtensionId__CalendarioEventoId__Id:" + idActividad + ",CalendarioEventoExtensionId__Id:" + padreID + ",DependenciaId:" + strconv.Itoa(dependenciaID) + "&limit=1"
 	if err := request.GetJson(url, &relacionesPadre); err != nil || len(relacionesPadre) == 0 || len(relacionesPadre[0]) == 0 {
 		return
 	}
@@ -610,7 +610,7 @@ func inactivarExtensionesActividad(idActividad string, usuario string, endpoint 
 		}
 	}
 	var relaciones []map[string]interface{}
-	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,CalendarioEventoId__Id:" + idActividad + "&limit=0"
+	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,CalendarioEventoExtensionId__CalendarioEventoId__Id:" + idActividad + "&limit=0"
 	if err := request.GetJson(url, &relaciones); err != nil {
 		return nil
 	}

@@ -23,6 +23,10 @@ func PostActividadCalendario(data []byte, usuario string) (interface{}, error) {
 	var actividadPersonaPost map[string]interface{}
 
 	if err := json.Unmarshal(data, &actividadCalendario); err == nil {
+		terceroID, err := helpers.TerceroIDFromPayload(actividadCalendario)
+		if err != nil {
+			return nil, errors.New("error del servicio PostActividadCalendario: " + err.Error())
+		}
 		Actividad := actividadCalendario["Actividad"]
 		actividadMap, ok := Actividad.(map[string]interface{})
 		if !ok {
@@ -34,6 +38,7 @@ func PostActividadCalendario(data []byte, usuario string) (interface{}, error) {
 		if err := validarCatalogoActividadProceso(actividadMap); err != nil {
 			return nil, err
 		}
+		helpers.SetTerceroID(actividadMap, terceroID)
 		helpers.NormalizeFechasTimeCalendarioEvento("calendario_evento", actividadMap)
 		//Solicitid post a eventos service enviando el json recibido
 		errActividad := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento", "POST", &actividadCalendarioPost, Actividad)
@@ -74,7 +79,7 @@ func PostActividadCalendario(data []byte, usuario string) (interface{}, error) {
 					return requestresponse.APIResponseDTO(true, 200, actividadCalendarioPost), nil
 				} else {
 					var resultado2 map[string]interface{}
-					request.SendJson(fmt.Sprintf(beego.AppConfig.String("EventoService")+"/calendario_evento/%.f", actividadCalendarioPost["Id"]), "DELETE", &resultado2, nil)
+					request.SendJson(fmt.Sprintf(beego.AppConfig.String("EventoService")+"/calendario_evento/%.f", actividadCalendarioPost["Id"]), "PUT", &resultado2, map[string]interface{}{"Activo": false, "TerceroId": terceroID})
 					logs.Error(errActividadPersona)
 				}
 			} else {
@@ -140,8 +145,13 @@ func UpdateActividadResponsables(idStr string, data []byte, usuario string) (int
 
 	actividadId, _ := strconv.Atoi(idStr)
 	if err := json.Unmarshal(data, &recibido); err == nil {
+		terceroID, err := helpers.TerceroIDFromPayload(recibido)
+		if err != nil {
+			return nil, errors.New("error del servicio UpdateActividadResponsables: " + err.Error())
+		}
 		if actividad, ok := recibido["actividad"].(map[string]interface{}); ok {
-			if err := actualizarFechasActividad(idStr, actividad); err != nil {
+			helpers.SetTerceroID(actividad, terceroID)
+			if err := actualizarFechasActividad(idStr, actividad, terceroID, usuario); err != nil {
 				return nil, err
 			}
 		}
@@ -208,10 +218,11 @@ func activoRelacionPublico(publico map[string]interface{}) bool {
 	return activo
 }
 
-func actualizarFechasActividad(idStr string, actividad map[string]interface{}) error {
+func actualizarFechasActividad(idStr string, actividad map[string]interface{}, terceroID int, usuario string) error {
 	fechaInicio, okInicio := actividad["FechaInicio"].(string)
 	fechaFin, okFin := actividad["FechaFin"].(string)
-	if !okInicio && !okFin {
+	activo, okActivo := actividad["Activo"].(bool)
+	if !okInicio && !okFin && !okActivo {
 		return nil
 	}
 
@@ -225,8 +236,18 @@ func actualizarFechasActividad(idStr string, actividad map[string]interface{}) e
 	if okFin {
 		calendarioEvento["FechaFin"] = fechaFin
 	}
-	if err := validarActualizacionFechasGlobalesActividad(idStr, calendarioEvento); err != nil {
-		return err
+	if okActivo {
+		if activo {
+			if err := validarActivacionEvento(idStr); err != nil {
+				return err
+			}
+		}
+		calendarioEvento["Activo"] = activo
+	}
+	if okInicio || okFin {
+		if err := validarActualizacionFechasGlobalesActividad(idStr, calendarioEvento); err != nil {
+			return err
+		}
 	}
 	if okInicio {
 		calendarioEvento["FechaInicio"] = helpers.FechaTimeParaCRUD(fechaInicio)
@@ -237,10 +258,16 @@ func actualizarFechasActividad(idStr string, actividad map[string]interface{}) e
 	if calendarioEvento["DependenciaId"] == nil || calendarioEvento["DependenciaId"] == "" {
 		calendarioEvento["DependenciaId"] = `{"proyectos":[],"fechas":[]}`
 	}
+	helpers.SetTerceroID(calendarioEvento, terceroID)
 
 	var resultado map[string]interface{}
 	if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+idStr, "PUT", &resultado, calendarioEvento); err != nil || resultado == nil || resultado["Type"] == "error" {
 		return errors.New("error del servicio UpdateActividadResponsables: no fue posible actualizar las fechas de la actividad")
+	}
+	if okActivo && !activo {
+		if err := inactivarExtensionesActividad(idStr, usuario, "UpdateActividadResponsables"); err != nil {
+			logs.Error(err)
+		}
 	}
 
 	return nil

@@ -386,13 +386,14 @@ func (c *ConsultaCalendarioAcademicoController) PutEventosCrud() {
 // @Description Proxy de eliminación DELETE a recursos permitidos del CRUD de eventos, con registro de auditoría.
 // @Param	recurso		path 	string	true	"Nombre del recurso"
 // @Param	id			path 	string	true	"Id del recurso"
+// @Param	body	body	models.GenericPayload	true	"Payload con TerceroId para registrar la operación"
 // @Success 200 {}
 // @Failure 404 recurso no encontrado
 // @router /eventos/:recurso/:id [delete]
 func (c *ConsultaCalendarioAcademicoController) DeleteEventosCrud() {
 	defer errorhandler.HandlePanic(&c.Controller)
 	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
-	resultado, err := services.DeleteEventosCrud(c.Ctx.Input.Param(":recurso"), c.Ctx.Input.Param(":id"), usuario)
+	resultado, err := services.DeleteEventosCrud(c.Ctx.Input.Param(":recurso"), c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
