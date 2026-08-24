@@ -32,7 +32,7 @@ func (e *ImpactoDesasociacionCalendarioError) Data() map[string]interface{} {
 	}
 }
 
-func PutCalendarioEstado(id string, data []byte, usuario string) (interface{}, error) {
+func PutCalendarioEstado(id string, data []byte) (interface{}, error) {
 	var recibido models.EstadoActivoRequest
 	if err := json.Unmarshal(data, &recibido); err != nil {
 		return nil, errors.New("error del servicio PutCalendarioEstado: solicitud inválida")
@@ -45,8 +45,6 @@ func PutCalendarioEstado(id string, data []byte, usuario string) (interface{}, e
 	if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+id, &calendario); err != nil || calendario == nil || calendario["Type"] == "error" {
 		return nil, errors.New("error del servicio PutCalendarioEstado: no fue posible consultar el calendario")
 	}
-
-	anterior := helpers.DeepCopyMap(calendario)
 
 	activo := false
 	if recibido.Activo == nil {
@@ -65,13 +63,11 @@ func PutCalendarioEstado(id string, data []byte, usuario string) (interface{}, e
 		return nil, errors.New("error del servicio PutCalendarioEstado: no fue posible actualizar el calendario")
 	}
 
-	entidadId, _ := strconv.Atoi(id)
-	RegistrarAuditoria("calendario", entidadId, "PUT", anterior, resultado, usuario, "PutCalendarioEstado")
 	if !activo {
-		if err := inactivarProcesosCalendario(id, usuario, "PutCalendarioEstado", recibido.TerceroId); err != nil {
+		if err := inactivarProcesosCalendario(id, recibido.TerceroId); err != nil {
 			logs.Error(err)
 		}
-		if err := inactivarEventosCalendario(id, usuario, "PutCalendarioEstado", recibido.TerceroId); err != nil {
+		if err := inactivarEventosCalendario(id, recibido.TerceroId); err != nil {
 			return nil, err
 		}
 	}
@@ -79,7 +75,7 @@ func PutCalendarioEstado(id string, data []byte, usuario string) (interface{}, e
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
 }
 
-func PutCalendarioDependencias(id string, data []byte, usuario string, authHeader string) (interface{}, error) {
+func PutCalendarioDependencias(id string, data []byte) (interface{}, error) {
 	var recibido models.CalendarioDependenciasRequest
 	if err := json.Unmarshal(data, &recibido); err != nil {
 		return nil, errors.New("error del servicio PutCalendarioDependencias: solicitud inválida")
@@ -91,8 +87,6 @@ func PutCalendarioDependencias(id string, data []byte, usuario string, authHeade
 	if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+id, &calendario); err != nil || calendario == nil || calendario["Type"] == "error" {
 		return nil, errors.New("error del servicio PutCalendarioDependencias: no fue posible consultar el calendario")
 	}
-
-	anterior := helpers.DeepCopyMap(calendario)
 
 	dependenciaId := recibido.DependenciaId
 	if dependenciaId == "" {
@@ -115,9 +109,7 @@ func PutCalendarioDependencias(id string, data []byte, usuario string, authHeade
 		return nil, errors.New("error del servicio PutCalendarioDependencias: no fue posible actualizar el calendario")
 	}
 
-	entidadId, _ := strconv.Atoi(id)
-	RegistrarAuditoria("calendario", entidadId, "PUT", anterior, resultado, usuario, "PutCalendarioDependencias")
-	if err := cascadaDependenciasCalendario(eventos, dependenciaId, usuario, recibido.TerceroId); err != nil {
+	if err := cascadaDependenciasCalendario(eventos, dependenciaId, recibido.TerceroId); err != nil {
 		return nil, err
 	}
 
@@ -191,7 +183,7 @@ func programasRemovidos(dependenciaAnterior map[string]interface{}, dependenciaN
 	return removidos
 }
 
-func cascadaDependenciasCalendario(eventos []map[string]interface{}, dependenciaNueva string, usuario string, terceroID int) error {
+func cascadaDependenciasCalendario(eventos []map[string]interface{}, dependenciaNueva string, terceroID int) error {
 	dependenciaNuevaMap, okNueva := helpers.ParseDependenciaEventoMap(dependenciaNueva)
 	if !okNueva {
 		dependenciaNuevaMap = map[string]interface{}{"proyectos": []interface{}{}, "fechas": []interface{}{}}
@@ -211,20 +203,16 @@ func cascadaDependenciasCalendario(eventos []map[string]interface{}, dependencia
 			continue
 		}
 		for _, programaID := range removidos {
-			if err := inactivarExtensionesDependenciaRetirada(idActividad, programaID, usuario); err != nil {
+			if err := inactivarExtensionesDependenciaRetirada(idActividad, programaID); err != nil {
 				return err
 			}
 		}
-		anterior := helpers.DeepCopyMap(actividad)
 		dependenciaBytes, _ := json.Marshal(dependenciaActualizada)
 		actividad["DependenciaId"] = string(dependenciaBytes)
 		helpers.SetTerceroID(actividad, terceroID)
 		var resultado map[string]interface{}
 		if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+idActividad, "PUT", &resultado, actividad); err != nil || resultado == nil || resultado["Type"] == "error" {
 			return errors.New("error del servicio PutCalendarioDependencias: no fue posible actualizar actividades en cascada")
-		}
-		if entidadId, err := strconv.Atoi(idActividad); err == nil {
-			RegistrarAuditoria("calendario_evento", entidadId, "PUT", anterior, resultado, usuario, "PutCalendarioDependencias/cascada")
 		}
 	}
 	return nil
@@ -267,7 +255,7 @@ func filtrarDependenciaActividadPorCalendario(dependenciaActividad map[string]in
 	return resultado, removidos, true
 }
 
-func inactivarExtensionesDependenciaRetirada(idActividad string, dependenciaID int, usuario string) error {
+func inactivarExtensionesDependenciaRetirada(idActividad string, dependenciaID int) error {
 	var relaciones []map[string]interface{}
 	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,Vigente:true,CalendarioEventoExtensionId__CalendarioEventoId__Id:" + idActividad + ",DependenciaId:" + strconv.Itoa(dependenciaID) + "&limit=0"
 	if err := request.GetJson(url, &relaciones); err != nil {
@@ -278,19 +266,15 @@ func inactivarExtensionesDependenciaRetirada(idActividad string, dependenciaID i
 		if !ok {
 			continue
 		}
-		anteriorRelacion := helpers.DeepCopyMap(relacion)
 		relacion["Activo"] = false
 		relacion["Vigente"] = false
 		var resultadoRelacion map[string]interface{}
 		if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_extension_programa/"+idRelacion, "PUT", &resultadoRelacion, relacion); err != nil || resultadoRelacion == nil || resultadoRelacion["Type"] == "error" {
 			return errors.New("error del servicio PutCalendarioDependencias: no fue posible inactivar extensión por programa")
 		}
-		if id, err := strconv.Atoi(idRelacion); err == nil {
-			RegistrarAuditoria("calendario_evento_extension_programa", id, "PUT", anteriorRelacion, resultadoRelacion, usuario, "PutCalendarioDependencias/cascada-extension-programa")
-		}
 		if extension, ok := relacion["CalendarioEventoExtensionId"].(map[string]interface{}); ok {
 			if extensionID, ok := helpers.InterfaceToInt(extension["Id"]); ok {
-				if err := inactivarExtensionSinProgramasVigentes(idActividad, extensionID, usuario); err != nil {
+				if err := inactivarExtensionSinProgramasVigentes(idActividad, extensionID); err != nil {
 					return err
 				}
 			}
@@ -299,7 +283,7 @@ func inactivarExtensionesDependenciaRetirada(idActividad string, dependenciaID i
 	return nil
 }
 
-func inactivarExtensionSinProgramasVigentes(idActividad string, extensionID int, usuario string) error {
+func inactivarExtensionSinProgramasVigentes(idActividad string, extensionID int) error {
 	var relacionesVigentes []map[string]interface{}
 	url := beego.AppConfig.String("EventoService") + "calendario_evento_extension_programa?query=Activo:true,Vigente:true,CalendarioEventoExtensionId__CalendarioEventoId__Id:" + idActividad + ",CalendarioEventoExtensionId__Id:" + strconv.Itoa(extensionID) + "&limit=1"
 	if err := request.GetJson(url, &relacionesVigentes); err != nil || (len(relacionesVigentes) > 0 && len(relacionesVigentes[0]) > 0) {
@@ -309,13 +293,11 @@ func inactivarExtensionSinProgramasVigentes(idActividad string, extensionID int,
 	if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento_extension/"+strconv.Itoa(extensionID), &extension); err != nil || extension == nil || extension["Type"] == "error" {
 		return errors.New("error del servicio PutCalendarioDependencias: no fue posible consultar extensión para cascada")
 	}
-	anterior := helpers.DeepCopyMap(extension)
 	extension["Activo"] = false
 	var resultado map[string]interface{}
 	if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento_extension/"+strconv.Itoa(extensionID), "PUT", &resultado, extension); err != nil || resultado == nil || resultado["Type"] == "error" {
 		return errors.New("error del servicio PutCalendarioDependencias: no fue posible inactivar extensión sin programas vigentes")
 	}
-	RegistrarAuditoria("calendario_evento_extension", extensionID, "PUT", anterior, resultado, usuario, "PutCalendarioDependencias/cascada-extension")
 	return nil
 }
 
@@ -353,7 +335,7 @@ func NombreActividadImpacto(actividad map[string]interface{}) string {
 	return nombreActividadImpacto(actividad)
 }
 
-func PostProcesoCalendario(data []byte, usuario string) (interface{}, error) {
+func PostProcesoCalendario(data []byte) (interface{}, error) {
 	var proceso map[string]interface{}
 	var resultado map[string]interface{}
 	if err := json.Unmarshal(data, &proceso); err != nil {
@@ -366,14 +348,10 @@ func PostProcesoCalendario(data []byte, usuario string) (interface{}, error) {
 		return nil, errors.New("error del servicio PostProcesoCalendario: no fue posible crear el proceso")
 	}
 
-	if id, ok := resultado["Id"].(float64); ok {
-		RegistrarAuditoria("proceso", int(id), "POST", nil, resultado, usuario, "PostProcesoCalendario")
-	}
-
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
 }
 
-func PutProcesoPeriodicidad(id string, data []byte, usuario string) (interface{}, error) {
+func PutProcesoPeriodicidad(id string, data []byte) (interface{}, error) {
 	var recibido models.ProcesoPeriodicidadRequest
 	if err := json.Unmarshal(data, &recibido); err != nil {
 		return nil, errors.New("error del servicio PutProcesoPeriodicidad: solicitud inválida")
@@ -383,8 +361,6 @@ func PutProcesoPeriodicidad(id string, data []byte, usuario string) (interface{}
 	if err := request.GetJson(beego.AppConfig.String("EventoService")+"proceso/"+id, &proceso); err != nil || proceso == nil || proceso["Type"] == "error" {
 		return nil, errors.New("error del servicio PutProcesoPeriodicidad: no fue posible consultar el proceso")
 	}
-
-	anterior := helpers.DeepCopyMap(proceso)
 
 	if recibido.TipoRecurrenciaId.Id <= 0 {
 		return nil, errors.New("error del servicio PutProcesoPeriodicidad: periodicidad inválida")
@@ -396,13 +372,10 @@ func PutProcesoPeriodicidad(id string, data []byte, usuario string) (interface{}
 		return nil, errors.New("error del servicio PutProcesoPeriodicidad: no fue posible actualizar el proceso")
 	}
 
-	entidadId, _ := strconv.Atoi(id)
-	RegistrarAuditoria("proceso", entidadId, "PUT", anterior, resultado, usuario, "PutProcesoPeriodicidad")
-
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
 }
 
-func PutProcesoEstado(id string, data []byte, usuario string) (interface{}, error) {
+func PutProcesoEstado(id string, data []byte) (interface{}, error) {
 	var recibido models.EstadoActivoRequest
 	if err := json.Unmarshal(data, &recibido); err != nil {
 		return nil, errors.New("error del servicio PutProcesoEstado: solicitud inválida")
@@ -415,8 +388,6 @@ func PutProcesoEstado(id string, data []byte, usuario string) (interface{}, erro
 	if err := request.GetJson(beego.AppConfig.String("EventoService")+"proceso/"+id, &proceso); err != nil || proceso == nil || proceso["Type"] == "error" {
 		return nil, errors.New("error del servicio PutProcesoEstado: no fue posible consultar el proceso")
 	}
-
-	anterior := helpers.DeepCopyMap(proceso)
 
 	activo := false
 	if recibido.Activo == nil {
@@ -438,10 +409,8 @@ func PutProcesoEstado(id string, data []byte, usuario string) (interface{}, erro
 		return nil, errors.New("error del servicio PutProcesoEstado: no fue posible actualizar el proceso")
 	}
 
-	entidadId, _ := strconv.Atoi(id)
-	RegistrarAuditoria("proceso", entidadId, "PUT", anterior, resultado, usuario, "PutProcesoEstado")
 	if !activo {
-		if err := inactivarEventosProceso(id, usuario, "PutProcesoEstado", recibido.TerceroId); err != nil {
+		if err := inactivarEventosProceso(id, recibido.TerceroId); err != nil {
 			return nil, err
 		}
 	}
@@ -449,7 +418,7 @@ func PutProcesoEstado(id string, data []byte, usuario string) (interface{}, erro
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
 }
 
-func inactivarProcesosCalendario(idCalendario string, usuario string, endpoint string, terceroID int) error {
+func inactivarProcesosCalendario(idCalendario string, terceroID int) error {
 	var procesos []map[string]interface{}
 	if err := request.GetJson(beego.AppConfig.String("EventoService")+"proceso?query=Activo:true,CalendarioID__Id:"+idCalendario+"&limit=0", &procesos); err != nil {
 		return errors.New("error inactivando procesos del calendario")
@@ -459,17 +428,13 @@ func inactivarProcesosCalendario(idCalendario string, usuario string, endpoint s
 		if !ok {
 			continue
 		}
-		anterior := helpers.DeepCopyMap(proceso)
 		proceso["Activo"] = false
 
 		var resultado map[string]interface{}
 		if err := request.SendJson(beego.AppConfig.String("EventoService")+"proceso/"+idProceso, "PUT", &resultado, proceso); err != nil || resultado == nil || resultado["Type"] == "error" {
 			return errors.New("error inactivando proceso del calendario")
 		}
-		if id, err := strconv.Atoi(idProceso); err == nil {
-			RegistrarAuditoria("proceso", id, "PUT", anterior, resultado, usuario, endpoint+"/proceso")
-		}
-		if err := inactivarEventosProceso(idProceso, usuario, endpoint, terceroID); err != nil {
+		if err := inactivarEventosProceso(idProceso, terceroID); err != nil {
 			return err
 		}
 	}
@@ -535,38 +500,37 @@ func validarActivacionEvento(id string) error {
 	return nil
 }
 
-func inactivarEventosProceso(idProceso string, usuario string, endpoint string, terceroID int) error {
+func inactivarEventosProceso(idProceso string, terceroID int) error {
 	var eventos []map[string]interface{}
 	if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=Activo:true,ProcesoId__Id:"+idProceso+"&limit=0", &eventos); err != nil {
 		return errors.New("error inactivando eventos del proceso")
 	}
 	for _, evento := range eventos {
-		if err := inactivarEvento(evento, usuario, endpoint, terceroID); err != nil {
+		if err := inactivarEvento(evento, terceroID); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func inactivarEventosCalendario(idCalendario string, usuario string, endpoint string, terceroID int) error {
+func inactivarEventosCalendario(idCalendario string, terceroID int) error {
 	var eventos []map[string]interface{}
 	if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=Activo:true,ProcesoId__CalendarioID__Id:"+idCalendario+"&limit=0", &eventos); err != nil {
 		return errors.New("error inactivando eventos del calendario")
 	}
 	for _, evento := range eventos {
-		if err := inactivarEvento(evento, usuario, endpoint, terceroID); err != nil {
+		if err := inactivarEvento(evento, terceroID); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func inactivarEvento(evento map[string]interface{}, usuario string, endpoint string, terceroID int) error {
+func inactivarEvento(evento map[string]interface{}, terceroID int) error {
 	idEvento, ok := helpers.IDToString(evento["Id"])
 	if !ok {
 		return nil
 	}
-	anterior := helpers.DeepCopyMap(evento)
 	evento["Activo"] = false
 	helpers.SetTerceroID(evento, terceroID)
 
@@ -574,16 +538,13 @@ func inactivarEvento(evento map[string]interface{}, usuario string, endpoint str
 	if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+idEvento, "PUT", &resultado, evento); err != nil || resultado == nil || resultado["Type"] == "error" {
 		return errors.New("error inactivando evento del proceso")
 	}
-	if id, err := strconv.Atoi(idEvento); err == nil {
-		RegistrarAuditoria("calendario_evento", id, "PUT", anterior, resultado, usuario, endpoint+"/calendario_evento")
-	}
-	if err := inactivarExtensionesActividad(idEvento, usuario, endpoint); err != nil {
+	if err := inactivarExtensionesActividad(idEvento); err != nil {
 		logs.Error(err)
 	}
 	return nil
 }
 
-func PutActividadDependencias(id string, data []byte, usuario string) (interface{}, error) {
+func PutActividadDependencias(id string, data []byte) (interface{}, error) {
 	var recibido models.ActividadDependenciasRequest
 	if err := json.Unmarshal(data, &recibido); err != nil {
 		return nil, errors.New("error del servicio PutActividadDependencias: solicitud inválida")
@@ -596,8 +557,6 @@ func PutActividadDependencias(id string, data []byte, usuario string) (interface
 	if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+id, &actividad); err != nil || actividad == nil || actividad["Type"] == "error" {
 		return nil, errors.New("error del servicio PutActividadDependencias: no fue posible consultar la actividad")
 	}
-
-	anterior := helpers.DeepCopyMap(actividad)
 
 	dependenciaId := recibido.DependenciaId
 	if dependenciaId == "" {
@@ -617,13 +576,10 @@ func PutActividadDependencias(id string, data []byte, usuario string) (interface
 		return nil, errors.New("error del servicio PutActividadDependencias: no fue posible actualizar la actividad")
 	}
 
-	entidadId, _ := strconv.Atoi(id)
-	RegistrarAuditoria("calendario_evento", entidadId, "PUT", anterior, resultado, usuario, "PutActividadDependencias")
-
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
 }
 
-func PostActividadesProgramasMasivo(idCalendario string, data []byte, usuario string) (interface{}, error) {
+func PostActividadesProgramasMasivo(idCalendario string, data []byte) (interface{}, error) {
 	var recibido models.ActividadesProgramasMasivoRequest
 	if err := json.Unmarshal(data, &recibido); err != nil {
 		return nil, errors.New("error del servicio PostActividadesProgramasMasivo: solicitud inválida")
@@ -716,7 +672,6 @@ func PostActividadesProgramasMasivo(idCalendario string, data []byte, usuario st
 		idActividad := pendiente["IdActividad"].(string)
 		actividad := pendiente["Actividad"].(map[string]interface{})
 		dependenciaActualizada := pendiente["DependenciaId"].(map[string]interface{})
-		anterior := helpers.DeepCopyMap(actividad)
 		dependenciaBytes, _ := json.Marshal(dependenciaActualizada)
 		actividad["DependenciaId"] = string(dependenciaBytes)
 		helpers.SetTerceroID(actividad, recibido.TerceroId)
@@ -724,7 +679,6 @@ func PostActividadesProgramasMasivo(idCalendario string, data []byte, usuario st
 		if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento/"+idActividad, "PUT", &resultado, actividad); err != nil || resultado == nil || resultado["Type"] == "error" {
 			return nil, errors.New("error del servicio PostActividadesProgramasMasivo: no fue posible actualizar la actividad " + idActividad)
 		}
-		RegistrarAuditoria("calendario_evento", actividadID, "PUT", anterior, resultado, usuario, "PostActividadesProgramasMasivo/"+operacion)
 		actualizadas++
 		resultados = append(resultados, map[string]interface{}{"ActividadId": actividadID, "DependenciaId": dependenciaActualizada})
 	}
@@ -777,7 +731,7 @@ func PostValidarActividadesProgramasMasivo(idCalendario string, data []byte) (in
 	disponiblesDesasociar := 0
 	bloqueadas := 0
 	for _, actividad := range actividadesConsultadas {
-		validacion, err := validarActividadProgramasMasivo(idCalendario, actividad, programas)
+		validacion, err := validarActividadProgramasMasivo(actividad, programas)
 		if err != nil {
 			return nil, err
 		}
@@ -830,8 +784,7 @@ func consultarActividadesMasivas(idCalendario string, actividades []int) ([]map[
 	return resultado, nil
 }
 
-func validarActividadProgramasMasivo(idCalendario string, actividad map[string]interface{}, programas []int) (map[string]interface{}, error) {
-	_ = idCalendario
+func validarActividadProgramasMasivo(actividad map[string]interface{}, programas []int) (map[string]interface{}, error) {
 	idActividad, _ := helpers.IDToString(actividad["Id"])
 	dependenciaActividad, ok := helpers.ParseDependenciaEventoMap(actividad["DependenciaId"])
 	if !ok {

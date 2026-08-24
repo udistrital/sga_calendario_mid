@@ -14,7 +14,7 @@ import (
 	"github.com/udistrital/utils_oas/requestresponse"
 )
 
-func PostActividadCalendario(data []byte, usuario string) (interface{}, error) {
+func PostActividadCalendario(data []byte) (interface{}, error) {
 	//Almacena el json que se trae desde el cliente
 	var actividadCalendario map[string]interface{}
 	//Almacena el resultado del json en algunas operaciones
@@ -35,11 +35,16 @@ func PostActividadCalendario(data []byte, usuario string) (interface{}, error) {
 		if err := validarFechasPayload(actividadMap, nil, "actividad"); err != nil {
 			return nil, err
 		}
-		if err := validarCatalogoActividadProceso(actividadMap); err != nil {
+		repetible, err := validarCatalogoActividadProceso(actividadMap)
+		if err != nil {
 			return nil, err
 		}
+		delete(actividadMap, "NumeroOcurrencia")
 		helpers.SetTerceroID(actividadMap, terceroID)
 		helpers.NormalizeFechasTimeCalendarioEvento("calendario_evento", actividadMap)
+		if err := validarDuplicadoCalendarioEventoConPolitica(actividadMap, "", repetible); err != nil {
+			return nil, errors.New("error del servicio PostActividadCalendario: " + err.Error())
+		}
 		//Solicitid post a eventos service enviando el json recibido
 		errActividad := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento", "POST", &actividadCalendarioPost, Actividad)
 		if errActividad == nil && fmt.Sprintf("%v", actividadCalendarioPost["System"]) != "map[]" && actividadCalendarioPost["Id"] != nil {
@@ -73,9 +78,6 @@ func PostActividadCalendario(data []byte, usuario string) (interface{}, error) {
 
 			if errActividadPersona == nil && fmt.Sprintf("%v", actividadPersonaPost["System"]) != "map[]" && actividadPersonaPost["Id"] != nil {
 				if actividadPersonaPost["Status"] != 400 {
-					if id, ok := actividadCalendarioPost["Id"].(float64); ok {
-						RegistrarAuditoria("calendario_evento", int(id), "POST", nil, actividadCalendarioPost, usuario, "PostActividadCalendario")
-					}
 					return requestresponse.APIResponseDTO(true, 200, actividadCalendarioPost), nil
 				} else {
 					var resultado2 map[string]interface{}
@@ -90,52 +92,44 @@ func PostActividadCalendario(data []byte, usuario string) (interface{}, error) {
 	return nil, errors.New("error del servicio PostActividadCalendario: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 }
 
-func validarCatalogoActividadProceso(actividad map[string]interface{}) error {
+func validarCatalogoActividadProceso(actividad map[string]interface{}) (bool, error) {
 	procesoId, err := idRelacion(actividad["ProcesoId"])
 	if err != nil {
-		return errors.New("error del servicio PostActividadCalendario: proceso inválido")
+		return false, errors.New("error del servicio PostActividadCalendario: proceso inválido")
 	}
 	eventoCatalogoId, err := idRelacion(actividad["EventoCatalogoId"])
 	if err != nil {
-		return errors.New("error del servicio PostActividadCalendario: evento de catálogo inválido")
+		return false, errors.New("error del servicio PostActividadCalendario: evento de catálogo inválido")
 	}
 
 	var proceso map[string]interface{}
 	if err := request.GetJson(beego.AppConfig.String("EventoService")+"proceso/"+procesoId, &proceso); err != nil || proceso == nil || proceso["Type"] == "error" {
-		return errors.New("error del servicio PostActividadCalendario: no fue posible consultar el proceso")
+		return false, errors.New("error del servicio PostActividadCalendario: no fue posible consultar el proceso")
 	}
 	if activo, ok := proceso["Activo"].(bool); !ok || !activo {
-		return errors.New("error del servicio PostActividadCalendario: el proceso no está activo")
+		return false, errors.New("error del servicio PostActividadCalendario: el proceso no está activo")
 	}
 
 	procesoCatalogoId, err := idRelacion(proceso["ProcesoCatalogoId"])
 	if err != nil {
-		return errors.New("error del servicio PostActividadCalendario: proceso sin catálogo asociado")
+		return false, errors.New("error del servicio PostActividadCalendario: proceso sin catálogo asociado")
 	}
 
 	var relaciones []map[string]interface{}
 	url := beego.AppConfig.String("EventoService") + "evento_catalogo_proceso_catalogo?query=Activo:true,EventoCatalogoId__Id:" + eventoCatalogoId + ",ProcesoCatalogoId__Id:" + procesoCatalogoId + "&limit=1"
 	if err := request.GetJson(url, &relaciones); err != nil || len(relaciones) == 0 || len(relaciones[0]) == 0 {
-		return errors.New("error del servicio PostActividadCalendario: la actividad seleccionada no pertenece al proceso")
+		return false, errors.New("error del servicio PostActividadCalendario: la actividad seleccionada no pertenece al proceso")
 	}
 
-	var actividadesExistentes []map[string]interface{}
-	urlDuplicado := beego.AppConfig.String("EventoService") + "calendario_evento?query=Activo:true,ProcesoId__Id:" + procesoId + ",EventoCatalogoId__Id:" + eventoCatalogoId + "&limit=1"
-	if err := request.GetJson(urlDuplicado, &actividadesExistentes); err != nil {
-		return errors.New("error del servicio PostActividadCalendario: no fue posible validar duplicados de actividad")
-	}
-	if len(actividadesExistentes) > 0 && len(actividadesExistentes[0]) > 0 {
-		return errors.New("error del servicio PostActividadCalendario: la actividad ya existe en el proceso")
-	}
-
-	return nil
+	repetible, _ := relaciones[0]["Repetible"].(bool)
+	return repetible, nil
 }
 
 func idRelacion(valor interface{}) (string, error) {
 	return helpers.RelationIDToString(valor)
 }
 
-func UpdateActividadResponsables(idStr string, data []byte, usuario string) (interface{}, error) {
+func UpdateActividadResponsables(idStr string, data []byte) (interface{}, error) {
 	var recibido map[string]interface{}
 	var guardados []map[string]interface{}
 	var actualizados []map[string]interface{}
@@ -151,7 +145,7 @@ func UpdateActividadResponsables(idStr string, data []byte, usuario string) (int
 		}
 		if actividad, ok := recibido["actividad"].(map[string]interface{}); ok {
 			helpers.SetTerceroID(actividad, terceroID)
-			if err := actualizarFechasActividad(idStr, actividad, terceroID, usuario); err != nil {
+			if err := actualizarFechasActividad(idStr, actividad, terceroID); err != nil {
 				return nil, err
 			}
 		}
@@ -161,8 +155,6 @@ func UpdateActividadResponsables(idStr string, data []byte, usuario string) (int
 		}
 		errConsulta := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+idStr, &guardados)
 		if errConsulta == nil {
-			anterior := make([]map[string]interface{}, len(guardados))
-			copy(anterior, guardados)
 			if len(guardados) > 0 {
 				for _, registro := range guardados {
 					idRegistro := fmt.Sprintf("%.f", registro["Id"].(float64))
@@ -191,7 +183,6 @@ func UpdateActividadResponsables(idStr string, data []byte, usuario string) (int
 
 					}
 				}
-				RegistrarAuditoria("calendario_evento_tipo_publico", actividadId, "PUT", anterior, map[string]interface{}{"responsables": actualizados}, usuario, "UpdateActividadResponsables")
 				return requestresponse.APIResponseDTO(true, 200, actualizados), nil
 			} else {
 				logs.Error(errBorrado)
@@ -218,7 +209,7 @@ func activoRelacionPublico(publico map[string]interface{}) bool {
 	return activo
 }
 
-func actualizarFechasActividad(idStr string, actividad map[string]interface{}, terceroID int, usuario string) error {
+func actualizarFechasActividad(idStr string, actividad map[string]interface{}, terceroID int) error {
 	fechaInicio, okInicio := actividad["FechaInicio"].(string)
 	fechaFin, okFin := actividad["FechaFin"].(string)
 	activo, okActivo := actividad["Activo"].(bool)
@@ -249,6 +240,9 @@ func actualizarFechasActividad(idStr string, actividad map[string]interface{}, t
 			return err
 		}
 	}
+	if err := validarDuplicadoCalendarioEvento(calendarioEvento, idStr); err != nil {
+		return errors.New("error del servicio UpdateActividadResponsables: " + err.Error())
+	}
 	if okInicio {
 		calendarioEvento["FechaInicio"] = helpers.FechaTimeParaCRUD(fechaInicio)
 	}
@@ -265,7 +259,7 @@ func actualizarFechasActividad(idStr string, actividad map[string]interface{}, t
 		return errors.New("error del servicio UpdateActividadResponsables: no fue posible actualizar las fechas de la actividad")
 	}
 	if okActivo && !activo {
-		if err := inactivarExtensionesActividad(idStr, usuario, "UpdateActividadResponsables"); err != nil {
+		if err := inactivarExtensionesActividad(idStr); err != nil {
 			logs.Error(err)
 		}
 	}

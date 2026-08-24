@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
+	"time"
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
@@ -13,10 +16,11 @@ import (
 	"github.com/udistrital/utils_oas/time_bogota"
 )
 
-const fechaGenericaClonacion = "2000-01-01T00:00:00-05:00"
 const dependenciaVaciaEvento = `{"proyectos":[],"fechas":[]}`
 
-func PostCalendario(data []byte, usuario string) (interface{}, error) {
+var fechaBaseClonacion = time.Date(2000, time.January, 1, 0, 0, 0, 0, helpers.GMTMinus5Location)
+
+func PostCalendario(data []byte) (interface{}, error) {
 	var calendario map[string]interface{}
 	var calendarioParam []map[string]interface{}
 	var proceso []map[string]interface{}
@@ -86,6 +90,7 @@ func PostCalendario(data []byte, usuario string) (interface{}, error) {
 		if len(actividades) == 0 || actividades[0]["Id"] == nil {
 			continue
 		}
+		prepararActividadesClonacion(actividades)
 
 		for _, actividadOrigen := range actividades {
 			idActividadOrigen, ok := helpers.IDToString(actividadOrigen["Id"])
@@ -95,8 +100,6 @@ func PostCalendario(data []byte, usuario string) (interface{}, error) {
 
 			actividadOrigen["Id"] = 0
 			actividadOrigen["ProcesoId"] = procesoOrigen
-			actividadOrigen["FechaInicio"] = fechaGenericaClonacion
-			actividadOrigen["FechaFin"] = fechaGenericaClonacion
 			actividadOrigen["DependenciaId"] = dependenciaVaciaEvento
 			helpers.SetTerceroID(actividadOrigen, terceroID)
 
@@ -127,7 +130,7 @@ func PostCalendario(data []byte, usuario string) (interface{}, error) {
 	return requestresponse.APIResponseDTO(true, 200, calendario), nil
 }
 
-func PostCalendarioPadre(data []byte, usuario string) (interface{}, error) {
+func PostCalendarioPadre(data []byte) (interface{}, error) {
 	var calendario map[string]interface{}
 	var calendarioParam []map[string]interface{}
 	var proceso []map[string]interface{}
@@ -145,7 +148,7 @@ func PostCalendarioPadre(data []byte, usuario string) (interface{}, error) {
 		if terceroErr != nil {
 			return nil, errors.New("error del servicio PostCalendarioPadre: " + terceroErr.Error())
 		}
-		idCalendario, err := calendarioDestinoClonacion(dataPost, usuario)
+		idCalendario, err := calendarioDestinoClonacion(dataPost)
 		if err != nil {
 			return nil, err
 		}
@@ -184,12 +187,11 @@ func PostCalendarioPadre(data []byte, usuario string) (interface{}, error) {
 											errCalendarioEvento := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId__Id:"+idOld+"&limit=0", &calendarioEvento)
 											if errCalendarioEvento == nil {
 												if len(calendarioEvento) > 0 && calendarioEvento[0]["Id"] != nil {
+													prepararActividadesClonacion(calendarioEvento)
 													for _, cEvento := range calendarioEvento {
 														idCalendarioEventoOld := fmt.Sprintf("%.f", cEvento["Id"].(float64))
 														cEvento["Id"] = 0
 														cEvento["ProcesoId"] = procesoOrigen
-														cEvento["FechaInicio"] = fechaGenericaClonacion
-														cEvento["FechaFin"] = fechaGenericaClonacion
 														cEvento["DependenciaId"] = dependenciaVaciaEvento
 														helpers.SetTerceroID(cEvento, terceroID)
 
@@ -262,7 +264,42 @@ func PostCalendarioPadre(data []byte, usuario string) (interface{}, error) {
 	}
 }
 
-func calendarioDestinoClonacion(dataPost map[string]interface{}, usuario string) (string, error) {
+func prepararActividadesClonacion(actividades []map[string]interface{}) {
+	sort.SliceStable(actividades, func(i, j int) bool {
+		catalogoI := idRelacionOrden(actividades[i]["EventoCatalogoId"])
+		catalogoJ := idRelacionOrden(actividades[j]["EventoCatalogoId"])
+		if catalogoI != catalogoJ {
+			return catalogoI < catalogoJ
+		}
+		ocurrenciaI, okI := helpers.InterfaceToInt(actividades[i]["NumeroOcurrencia"])
+		ocurrenciaJ, okJ := helpers.InterfaceToInt(actividades[j]["NumeroOcurrencia"])
+		if okI && okJ && ocurrenciaI != ocurrenciaJ {
+			return ocurrenciaI < ocurrenciaJ
+		}
+		return idRelacionOrden(actividades[i]["Id"]) < idRelacionOrden(actividades[j]["Id"])
+	})
+
+	for indice, actividad := range actividades {
+		fecha := fechaBaseClonacion.AddDate(0, 0, indice).Format("2006-01-02T15:04:05-07:00")
+		actividad["FechaInicio"] = fecha
+		actividad["FechaFin"] = fecha
+		delete(actividad, "NumeroOcurrencia")
+	}
+}
+
+func idRelacionOrden(valor interface{}) int {
+	if id, ok := helpers.InterfaceToInt(valor); ok {
+		return id
+	}
+	id, err := helpers.RelationIDToString(valor)
+	if err != nil {
+		return 0
+	}
+	resultado, _ := strconv.Atoi(id)
+	return resultado
+}
+
+func calendarioDestinoClonacion(dataPost map[string]interface{}) (string, error) {
 	if id, ok := dataPost["Id"].(float64); ok && id > 0 {
 		return fmt.Sprintf("%.f", id), nil
 	}
@@ -294,6 +331,5 @@ func calendarioDestinoClonacion(dataPost map[string]interface{}, usuario string)
 	if !ok || id <= 0 || resultado["Status"] == 400 || resultado["Type"] == "error" {
 		return "", errors.New("error del servicio PostCalendarioPadre: no fue posible crear calendario destino")
 	}
-	RegistrarAuditoria("calendario", int(id), "POST", nil, resultado, usuario, "PostCalendarioPadre/calendario")
 	return fmt.Sprintf("%.f", id), nil
 }

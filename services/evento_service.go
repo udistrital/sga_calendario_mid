@@ -11,7 +11,7 @@ import (
 	"github.com/udistrital/utils_oas/requestresponse"
 )
 
-func PostEvento(data []byte, usuario string) (interface{}, error) {
+func PostEvento(data []byte) (interface{}, error) {
 	var Evento map[string]interface{}
 	var response interface{} = nil
 	var success bool = false
@@ -77,7 +77,7 @@ func PostEvento(data []byte, usuario string) (interface{}, error) {
 	}
 }
 
-func PutEvento(idStr string, data []byte, usuario string) (interface{}, error) {
+func PutEvento(idStr string, data []byte) (interface{}, error) {
 	var response interface{} = nil
 	var success bool = false
 	var message string = ""
@@ -251,7 +251,7 @@ func GetEvento(persona string) (interface{}, error) {
 	}
 }
 
-func DeleteEvento(id string, usuario string) (interface{}, error) {
+func DeleteEvento(id string) (interface{}, error) {
 	var eventoDeleted map[string]interface{}
 
 	errEvento := request.SendJson(fmt.Sprintf("%s", beego.AppConfig.String("EventoService")+"/tr_evento/"+id), "DELETE", &eventoDeleted, nil)

@@ -27,7 +27,7 @@ var recursosEventosPermitidos = map[string]bool{
 	"tipo_recurrencia":                     true,
 }
 
-var recursosAuditables = map[string]bool{
+var recursosConLecturaPut = map[string]bool{
 	"calendario":                           true,
 	"proceso":                              true,
 	"calendario_evento":                    true,
@@ -142,7 +142,7 @@ func getJsonConfiguracion(url string, authHeader string, target interface{}) err
 	return request.GetJson(url, target)
 }
 
-func PostEventosCrud(recurso string, data []byte, usuario string) (interface{}, error) {
+func PostEventosCrud(recurso string, data []byte) (interface{}, error) {
 	if err := validarRecursoEventos(recurso); err != nil {
 		return nil, err
 	}
@@ -155,22 +155,31 @@ func PostEventosCrud(recurso string, data []byte, usuario string) (interface{}, 
 		return nil, err
 	}
 	helpers.NormalizeFechasTimeCalendarioEvento(recurso, payload)
+	if recurso == "calendario_evento" {
+		terceroID, err := helpers.TerceroIDFromPayload(payload)
+		if err != nil {
+			return nil, err
+		}
+		payloadMap, ok := payload.(map[string]interface{})
+		if !ok {
+			return nil, errors.New("solicitud inválida")
+		}
+		helpers.SetTerceroID(payloadMap, terceroID)
+		delete(payloadMap, "NumeroOcurrencia")
+		if err := validarDuplicadoCalendarioEvento(payloadMap, ""); err != nil {
+			return nil, err
+		}
+	}
 
 	var recibido interface{}
 	if err := request.SendJson(beego.AppConfig.String("EventoService")+recurso, "POST", &recibido, payload); err != nil || recibido == nil {
 		return nil, errors.New("no fue posible crear el recurso de eventos")
 	}
 
-	if recursosAuditables[recurso] {
-		if id, ok := helpers.ExtractID(recibido); ok {
-			RegistrarAuditoria(recurso, id, "POST", nil, recibido, usuario, "PostEventosCrud/"+recurso)
-		}
-	}
-
 	return requestresponse.APIResponseDTO(true, 200, recibido), nil
 }
 
-func PutEventosCrud(recurso string, id string, data []byte, usuario string) (interface{}, error) {
+func PutEventosCrud(recurso string, id string, data []byte) (interface{}, error) {
 	if err := validarRecursoEventos(recurso); err != nil {
 		return nil, err
 	}
@@ -186,6 +195,15 @@ func PutEventosCrud(recurso string, id string, data []byte, usuario string) (int
 		return nil, err
 	}
 	helpers.NormalizeFechasTimeCalendarioEvento(recurso, payload)
+	if recurso == "calendario_evento" {
+		terceroID, err := helpers.TerceroIDFromPayload(payload)
+		if err != nil {
+			return nil, err
+		}
+		if payloadMap, ok := payload.(map[string]interface{}); ok {
+			helpers.SetTerceroID(payloadMap, terceroID)
+		}
+	}
 	if activo, ok := helpers.ActivoFromPayload(payload); ok && activo {
 		switch recurso {
 		case "proceso":
@@ -198,9 +216,20 @@ func PutEventosCrud(recurso string, id string, data []byte, usuario string) (int
 			}
 		}
 	}
-	var anterior interface{}
-	if recursosAuditables[recurso] {
-		request.GetJson(beego.AppConfig.String("EventoService")+recurso+"/"+id, &anterior)
+	var actual interface{}
+	if recurso == "calendario_evento" {
+		if err := request.GetJson(beego.AppConfig.String("EventoService")+recurso+"/"+id, &actual); err != nil {
+			return nil, errors.New("no fue posible consultar la actividad para validar duplicados")
+		}
+		payloadMap, ok := payload.(map[string]interface{})
+		actualMap, actualOK := actual.(map[string]interface{})
+		if !ok || !actualOK || actualMap == nil || actualMap["Type"] == "error" {
+			return nil, errors.New("no fue posible consultar la actividad para validar duplicados")
+		}
+		delete(payloadMap, "NumeroOcurrencia")
+		if err := validarDuplicadoCalendarioEvento(calendarioEventoEfectivo(actualMap, payloadMap), id); err != nil {
+			return nil, err
+		}
 	}
 
 	var resultado interface{}
@@ -208,10 +237,8 @@ func PutEventosCrud(recurso string, id string, data []byte, usuario string) (int
 		return nil, errors.New("no fue posible actualizar el recurso de eventos")
 	}
 
-	if recursosAuditables[recurso] {
+	if recursosConLecturaPut[recurso] {
 		resultado = entidadActualizadaEventos(recurso, id, resultado)
-		entidadId, _ := strconv.Atoi(id)
-		RegistrarAuditoria(recurso, entidadId, "PUT", anterior, resultado, usuario, "PutEventosCrud/"+recurso)
 	}
 
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
@@ -225,7 +252,7 @@ func entidadActualizadaEventos(recurso string, id string, fallback interface{}) 
 	return actualizado
 }
 
-func DeleteEventosCrud(recurso string, id string, data []byte, usuario string) (interface{}, error) {
+func DeleteEventosCrud(recurso string, id string, data []byte) (interface{}, error) {
 	if err := validarRecursoEventos(recurso); err != nil {
 		return nil, err
 	}
@@ -247,19 +274,9 @@ func DeleteEventosCrud(recurso string, id string, data []byte, usuario string) (
 			helpers.SetTerceroID(payloadMap, terceroID)
 		}
 	}
-	var anterior interface{}
-	if recursosAuditables[recurso] {
-		request.GetJson(beego.AppConfig.String("EventoService")+recurso+"/"+id, &anterior)
-	}
-
 	var resultado interface{}
 	if err := request.SendJson(beego.AppConfig.String("EventoService")+recurso+"/"+id, "DELETE", &resultado, payload); err != nil || resultado == nil {
 		return nil, errors.New("no fue posible eliminar el recurso de eventos")
-	}
-
-	if recursosAuditables[recurso] {
-		entidadId, _ := strconv.Atoi(id)
-		RegistrarAuditoria(recurso, entidadId, "DELETE", anterior, nil, usuario, "DeleteEventosCrud/"+recurso)
 	}
 
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil

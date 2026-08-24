@@ -6,7 +6,6 @@ require (
 	github.com/astaxie/beego v1.12.3
 	github.com/go-co-op/gocron v1.37.0
 	github.com/smartystreets/goconvey v1.8.1
-	github.com/udistrital/auditoria v0.0.0-20240801050554-30b15f390b24
 	github.com/udistrital/utils_oas v0.1.0
 	golang.org/x/sync v0.19.0
 )

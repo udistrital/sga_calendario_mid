@@ -74,8 +74,7 @@ func (c *ConsultaCalendarioAcademicoController) GetAll() {
 // @router /calendario/:id/estado [put]
 func (c *ConsultaCalendarioAcademicoController) PutCalendarioEstado() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
-	resultado, err := services.PutCalendarioEstado(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario)
+	resultado, err := services.PutCalendarioEstado(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -97,9 +96,7 @@ func (c *ConsultaCalendarioAcademicoController) PutCalendarioEstado() {
 // @router /calendario/:id/dependencias [put]
 func (c *ConsultaCalendarioAcademicoController) PutCalendarioDependencias() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	authHeader := c.Ctx.Input.Header("Authorization")
-	usuario := services.ExtraerUsuario(authHeader)
-	resultado, err := services.PutCalendarioDependencias(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario, authHeader)
+	resultado, err := services.PutCalendarioDependencias(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -115,15 +112,14 @@ func (c *ConsultaCalendarioAcademicoController) PutCalendarioDependencias() {
 
 // PostProcesoCalendario ...
 // @Title PostProcesoCalendario
-// @Description Crea un proceso asociado a un calendario académico, validando fechas y registrando auditoría.
+// @Description Crea un proceso asociado a un calendario académico, validando fechas.
 // @Param	body	body	models.GenericPayload	true	"Datos del proceso para eventos_crud/proceso"
 // @Success 200 {}
 // @Failure 404 recurso no encontrado
 // @router /proceso [post]
 func (c *ConsultaCalendarioAcademicoController) PostProcesoCalendario() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
-	resultado, err := services.PostProcesoCalendario(c.Ctx.Input.RequestBody, usuario)
+	resultado, err := services.PostProcesoCalendario(c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -136,7 +132,7 @@ func (c *ConsultaCalendarioAcademicoController) PostProcesoCalendario() {
 
 // PutProcesoPeriodicidad ...
 // @Title PutProcesoPeriodicidad
-// @Description Actualiza la periodicidad (TipoRecurrenciaId) de un proceso y registra auditoría.
+// @Description Actualiza la periodicidad (TipoRecurrenciaId) de un proceso.
 // @Param	id		path 	string	true	"Id del proceso"
 // @Param	body	body	models.ProcesoPeriodicidadRequest	true	"Periodicidad objetivo con TipoRecurrenciaId.Id"
 // @Success 200 {}
@@ -144,8 +140,7 @@ func (c *ConsultaCalendarioAcademicoController) PostProcesoCalendario() {
 // @router /proceso/:id/periodicidad [put]
 func (c *ConsultaCalendarioAcademicoController) PutProcesoPeriodicidad() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
-	resultado, err := services.PutProcesoPeriodicidad(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario)
+	resultado, err := services.PutProcesoPeriodicidad(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -166,8 +161,7 @@ func (c *ConsultaCalendarioAcademicoController) PutProcesoPeriodicidad() {
 // @router /proceso/:id/estado [put]
 func (c *ConsultaCalendarioAcademicoController) PutProcesoEstado() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
-	resultado, err := services.PutProcesoEstado(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario)
+	resultado, err := services.PutProcesoEstado(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -189,8 +183,7 @@ func (c *ConsultaCalendarioAcademicoController) PutProcesoEstado() {
 // @router /actividad/:id/dependencias [put]
 func (c *ConsultaCalendarioAcademicoController) PutActividadDependencias() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
-	resultado, err := services.PutActividadDependencias(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario)
+	resultado, err := services.PutActividadDependencias(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -233,8 +226,7 @@ func (c *ConsultaCalendarioAcademicoController) PostValidarActividadesProgramasM
 // @router /calendario/:id/actividades-programas/masivo [post]
 func (c *ConsultaCalendarioAcademicoController) PostActividadesProgramasMasivo() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
-	resultado, err := services.PostActividadesProgramasMasivo(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario)
+	resultado, err := services.PostActividadesProgramasMasivo(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -338,7 +330,7 @@ func (c *ConsultaCalendarioAcademicoController) GetEventosCrudId() {
 
 // PostEventosCrud ...
 // @Title PostEventosCrud
-// @Description Proxy de creación POST a recursos permitidos del CRUD de eventos, con registro de auditoría.
+// @Description Proxy de creación POST a recursos permitidos del CRUD de eventos.
 // @Param	recurso		path 	string	true	"Nombre del recurso"
 // @Param	body	body	models.GenericPayload	true	"Datos del recurso a crear en eventos_crud"
 // @Success 200 {}
@@ -346,8 +338,7 @@ func (c *ConsultaCalendarioAcademicoController) GetEventosCrudId() {
 // @router /eventos/:recurso [post]
 func (c *ConsultaCalendarioAcademicoController) PostEventosCrud() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
-	resultado, err := services.PostEventosCrud(c.Ctx.Input.Param(":recurso"), c.Ctx.Input.RequestBody, usuario)
+	resultado, err := services.PostEventosCrud(c.Ctx.Input.Param(":recurso"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -360,7 +351,7 @@ func (c *ConsultaCalendarioAcademicoController) PostEventosCrud() {
 
 // PutEventosCrud ...
 // @Title PutEventosCrud
-// @Description Proxy de actualización PUT a recursos permitidos del CRUD de eventos, con registro de auditoría de la entidad actualizada.
+// @Description Proxy de actualización PUT a recursos permitidos del CRUD de eventos.
 // @Param	recurso		path 	string	true	"Nombre del recurso"
 // @Param	id			path 	string	true	"Id del recurso"
 // @Param	body	body	models.GenericPayload	true	"Datos actualizados del recurso en eventos_crud"
@@ -369,8 +360,7 @@ func (c *ConsultaCalendarioAcademicoController) PostEventosCrud() {
 // @router /eventos/:recurso/:id [put]
 func (c *ConsultaCalendarioAcademicoController) PutEventosCrud() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
-	resultado, err := services.PutEventosCrud(c.Ctx.Input.Param(":recurso"), c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario)
+	resultado, err := services.PutEventosCrud(c.Ctx.Input.Param(":recurso"), c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -383,17 +373,16 @@ func (c *ConsultaCalendarioAcademicoController) PutEventosCrud() {
 
 // DeleteEventosCrud ...
 // @Title DeleteEventosCrud
-// @Description Proxy de eliminación DELETE a recursos permitidos del CRUD de eventos, con registro de auditoría.
+// @Description Proxy de eliminación DELETE a recursos permitidos del CRUD de eventos.
 // @Param	recurso		path 	string	true	"Nombre del recurso"
 // @Param	id			path 	string	true	"Id del recurso"
-// @Param	body	body	models.GenericPayload	true	"Payload con TerceroId para registrar la operación"
+// @Param	body	body	models.GenericPayload	true	"Payload; TerceroId es requerido para escrituras de calendario_evento"
 // @Success 200 {}
 // @Failure 404 recurso no encontrado
 // @router /eventos/:recurso/:id [delete]
 func (c *ConsultaCalendarioAcademicoController) DeleteEventosCrud() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
-	resultado, err := services.DeleteEventosCrud(c.Ctx.Input.Param(":recurso"), c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario)
+	resultado, err := services.DeleteEventosCrud(c.Ctx.Input.Param(":recurso"), c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -440,11 +429,10 @@ func (c *ConsultaCalendarioAcademicoController) GetOnePorId() {
 func (c *ConsultaCalendarioAcademicoController) PutInhabilitarCalendario() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
 	idCalendario := c.Ctx.Input.Param(":id")
 	data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.PutInhabilitarCalendario(idCalendario, data, usuario)
+	resultado, err := services.PutInhabilitarCalendario(idCalendario, data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -467,10 +455,9 @@ func (c *ConsultaCalendarioAcademicoController) PutInhabilitarCalendario() {
 func (c *ConsultaCalendarioAcademicoController) PostCalendarioHijo() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
 	data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.PostCalendarioHijo(data, usuario)
+	resultado, err := services.PostCalendarioHijo(data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)

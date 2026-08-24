@@ -33,20 +33,3 @@ func ClaimsDesdeBearer(authHeader string) (map[string]interface{}, bool) {
 	claims, err := DecodeJWTPayload(segments[1])
 	return claims, err == nil
 }
-
-func ExtraerSubJWT(authHeader string) string {
-	claims, ok := ClaimsDesdeBearer(authHeader)
-	if !ok {
-		return ""
-	}
-	sub, _ := claims["sub"].(string)
-	return sub
-}
-
-func TerceroIDOrNil(usuario string) interface{} {
-	terceroID, ok := InterfaceToInt(usuario)
-	if !ok || terceroID <= 0 {
-		return nil
-	}
-	return terceroID
-}

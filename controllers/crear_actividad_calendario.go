@@ -32,10 +32,9 @@ func (c *ActividadCalendarioController) URLMapping() {
 func (c *ActividadCalendarioController) PostActividadCalendario() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
 	data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.PostActividadCalendario(data, usuario)
+	resultado, err := services.PostActividadCalendario(data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -59,11 +58,10 @@ func (c *ActividadCalendarioController) PostActividadCalendario() {
 func (c *ActividadCalendarioController) UpdateActividadResponsables() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
 	idStr := c.Ctx.Input.Param(":id")
 	data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.UpdateActividadResponsables(idStr, data, usuario)
+	resultado, err := services.UpdateActividadResponsables(idStr, data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -86,9 +84,7 @@ func (c *ActividadCalendarioController) UpdateActividadResponsables() {
 // @router /:id/extension [post]
 func (c *ActividadCalendarioController) PostExtensionActividad() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	authHeader := c.Ctx.Input.Header("Authorization")
-	usuario := services.ExtraerUsuario(authHeader)
-	resultado, err := services.PostExtensionActividad(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody, usuario, authHeader)
+	resultado, err := services.PostExtensionActividad(c.Ctx.Input.Param(":id"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -110,9 +106,7 @@ func (c *ActividadCalendarioController) PostExtensionActividad() {
 // @router /:id/extension/:extension [put]
 func (c *ActividadCalendarioController) PutExtensionActividad() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	authHeader := c.Ctx.Input.Header("Authorization")
-	usuario := services.ExtraerUsuario(authHeader)
-	resultado, err := services.PutExtensionActividad(c.Ctx.Input.Param(":id"), c.Ctx.Input.Param(":extension"), c.Ctx.Input.RequestBody, usuario, authHeader)
+	resultado, err := services.PutExtensionActividad(c.Ctx.Input.Param(":id"), c.Ctx.Input.Param(":extension"), c.Ctx.Input.RequestBody)
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -133,9 +127,7 @@ func (c *ActividadCalendarioController) PutExtensionActividad() {
 // @router /:id/extension/:extension/anular [put]
 func (c *ActividadCalendarioController) AnularExtensionActividad() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	authHeader := c.Ctx.Input.Header("Authorization")
-	usuario := services.ExtraerUsuario(authHeader)
-	resultado, err := services.DeleteExtensionActividad(c.Ctx.Input.Param(":id"), c.Ctx.Input.Param(":extension"), usuario, authHeader)
+	resultado, err := services.DeleteExtensionActividad(c.Ctx.Input.Param(":id"), c.Ctx.Input.Param(":extension"))
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado
@@ -156,9 +148,7 @@ func (c *ActividadCalendarioController) AnularExtensionActividad() {
 // @router /:id/extension/:extension [delete]
 func (c *ActividadCalendarioController) DeleteExtensionActividad() {
 	defer errorhandler.HandlePanic(&c.Controller)
-	authHeader := c.Ctx.Input.Header("Authorization")
-	usuario := services.ExtraerUsuario(authHeader)
-	resultado, err := services.DeleteExtensionActividad(c.Ctx.Input.Param(":id"), c.Ctx.Input.Param(":extension"), usuario, authHeader)
+	resultado, err := services.DeleteExtensionActividad(c.Ctx.Input.Param(":id"), c.Ctx.Input.Param(":extension"))
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
 		c.Data["json"] = resultado

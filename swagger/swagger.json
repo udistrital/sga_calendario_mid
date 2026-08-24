@@ -641,7 +641,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Proxy de creación POST a recursos permitidos del CRUD de eventos, con registro de auditoría.",
+                "description": "Proxy de creación POST a recursos permitidos del CRUD de eventos.",
                 "operationId": "ConsultaCalendarioAcademicoController.PostEventosCrud",
                 "parameters": [
                     {
@@ -713,7 +713,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Proxy de actualización PUT a recursos permitidos del CRUD de eventos, con registro de auditoría de la entidad actualizada.",
+                "description": "Proxy de actualización PUT a recursos permitidos del CRUD de eventos.",
                 "operationId": "ConsultaCalendarioAcademicoController.PutEventosCrud",
                 "parameters": [
                     {
@@ -753,7 +753,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Proxy de eliminación DELETE a recursos permitidos del CRUD de eventos, con registro de auditoría.",
+                "description": "Proxy de eliminación DELETE a recursos permitidos del CRUD de eventos.",
                 "operationId": "ConsultaCalendarioAcademicoController.DeleteEventosCrud",
                 "parameters": [
                     {
@@ -773,7 +773,7 @@
                     {
                         "in": "body",
                         "name": "body",
-                        "description": "Payload con TerceroId para registrar la operación",
+                        "description": "Payload; TerceroId es requerido para escrituras de calendario_evento",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/models.GenericPayload"
@@ -823,7 +823,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Crea un proceso asociado a un calendario académico, validando fechas y registrando auditoría.",
+                "description": "Crea un proceso asociado a un calendario académico, validando fechas.",
                 "operationId": "ConsultaCalendarioAcademicoController.PostProcesoCalendario",
                 "parameters": [
                     {
@@ -886,7 +886,7 @@
                 "tags": [
                     "calendario-academico"
                 ],
-                "description": "Actualiza la periodicidad (TipoRecurrenciaId) de un proceso y registra auditoría.",
+                "description": "Actualiza la periodicidad (TipoRecurrenciaId) de un proceso.",
                 "operationId": "ConsultaCalendarioAcademicoController.PutProcesoPeriodicidad",
                 "parameters": [
                     {

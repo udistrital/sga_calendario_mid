@@ -27,10 +27,9 @@ func (c *ClonarCalendarioController) URLMapping() {
 func (c *ClonarCalendarioController) PostCalendario() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
 	data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.PostCalendario(data, usuario)
+	resultado, err := services.PostCalendario(data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -54,10 +53,9 @@ func (c *ClonarCalendarioController) PostCalendario() {
 func (c *ClonarCalendarioController) PostCalendarioPadre() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
 	data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.PostCalendarioPadre(data, usuario)
+	resultado, err := services.PostCalendarioPadre(data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)

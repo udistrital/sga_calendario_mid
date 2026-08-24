@@ -4,11 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/astaxie/beego"
 	"github.com/udistrital/sga_calendario_mid/helpers"
 	"github.com/udistrital/utils_oas/request"
 )
+
+const userInfoURL = "https://autenticacion.portaloas.udistrital.edu.co/oauth2/userinfo"
+
+var userInfoRequestMutex sync.Mutex
 
 func ValidarPermisoGestionActividad(idActividad string, authHeader string) error {
 	actividad, err := obtenerActividad(idActividad)
@@ -66,6 +71,19 @@ func rolesDesdeAuthorization(authHeader string) []string {
 	roles = append(roles, rolesDesdeUserInfo(userInfoDesdeBearer(authHeader))...)
 	roles = append(roles, rolesDesdeJWT(authHeader)...)
 	return roles
+}
+
+func userInfoDesdeBearer(authHeader string) map[string]interface{} {
+	var userInfo map[string]interface{}
+	userInfoRequestMutex.Lock()
+	request.SetHeader(authHeader)
+	err := request.GetJson(userInfoURL, &userInfo)
+	request.SetHeader("")
+	userInfoRequestMutex.Unlock()
+	if err != nil || userInfo == nil {
+		return nil
+	}
+	return userInfo
 }
 
 func rolesDesdeUserInfo(userInfo map[string]interface{}) []string {

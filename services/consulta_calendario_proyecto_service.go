@@ -133,6 +133,7 @@ func GetCalendarProject(idNiv string, idPer string) (interface{}, error) {
 											"ActividadParticular": true,
 											"EventoId":            Evento["Id"],
 											"EventoCatalogoId":    Evento["EventoCatalogoId"],
+											"NumeroOcurrencia":    Evento["NumeroOcurrencia"],
 											"ProcesoId":           Evento["ProcesoId"],
 											"NombreProceso":       nombreProceso,
 											"CodigoProceso":       codAbrProceso,

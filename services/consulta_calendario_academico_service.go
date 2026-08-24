@@ -22,7 +22,6 @@ func GetAll() (interface{}, error) {
 	var resultados []map[string]interface{}
 	var calendarios []map[string]interface{}
 	var errorGetAll bool
-	var message string
 	var mutex sync.Mutex
 	wge := new(errgroup.Group)
 
@@ -70,11 +69,9 @@ func GetAll() (interface{}, error) {
 			}
 		} else {
 			errorGetAll = false
-			message += "No data found"
 		}
 	} else {
 		errorGetAll = true
-		message += errCalendario.Error()
 	}
 
 	if !errorGetAll {
@@ -103,13 +100,11 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 	var procesoArr []string
 	var proceso map[string]interface{}
 	var procesoResultado []map[string]interface{}
-	var actividad map[string]interface{}
-	var procesoAdd map[string]interface{}
 
 	if resultado["Type"] != "error" {
 		// consultar calendario evento por tipo evento
 		var calendarios []map[string]interface{}
-		errcalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId__Id.CalendarioID__Id:"+idCalendario, &calendarios)
+		errcalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId__Id.CalendarioID__Id:"+idCalendario+"&limit=0", &calendarios)
 
 		if errcalendario == nil {
 			if calendarios[0]["Id"] != nil {
@@ -182,7 +177,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 					wge.Go(func() error {
 						var actividadResultado []map[string]interface{}
 						var procesos []map[string]interface{}
-						errproceso := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId.Id:"+procesoList+"&ProcesoId__Id.CalendarioID__Id:"+idCalendario, &procesos)
+						errproceso := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId.Id:"+procesoList+"&ProcesoId__Id.CalendarioID__Id:"+idCalendario+"&limit=0", &procesos)
 
 						if errproceso == nil {
 							if procesos != nil {
@@ -191,9 +186,8 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 									responsableList := responsablesActividad(proceso)
 									idActividad := fmt.Sprintf("%.f", proceso["Id"].(float64))
 
-									actividad = nil
 									nombreActividad, descripcionActividad := datosEventoCatalogo(proceso["EventoCatalogoId"])
-									actividad = map[string]interface{}{
+									actividad := map[string]interface{}{
 										"actividadId":      proceso["Id"].(float64),
 										"Nombre":           nombreActividad,
 										"Descripcion":      descripcionActividad,
@@ -202,6 +196,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 										"Activo":           proceso["Activo"].(bool),
 										"ProcesoId":        proceso["ProcesoId"].(map[string]interface{}),
 										"EventoCatalogoId": proceso["EventoCatalogoId"],
+										"NumeroOcurrencia": proceso["NumeroOcurrencia"],
 										"Responsable":      responsableList,
 										"Extensiones":      extensionResumenActividad(idActividad),
 									}
@@ -211,8 +206,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 								}
 
 								nombreProceso, _, _ := datosProcesoCatalogo(procesos[0]["ProcesoId"])
-								procesoAdd = nil
-								procesoAdd = map[string]interface{}{
+								procesoAdd := map[string]interface{}{
 									"Proceso":     nombreProceso,
 									"Actividades": actividadResultado,
 								}
@@ -323,7 +317,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 
 }
 
-func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) (interface{}, error) {
+func PutInhabilitarCalendario(idCalendario string, data []byte) (interface{}, error) {
 	var calendario map[string]interface{}
 	var procesos []map[string]interface{}
 	var calendarioEvento []map[string]interface{}
@@ -342,17 +336,12 @@ func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) 
 		if errCalendario == nil {
 			if calendario != nil {
 
-				calendarioAnterior := helpers.DeepCopyMap(calendario)
 				calendario["Activo"] = false
 
 				errCalendario := request.SendJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, "PUT", &resultado, calendario)
 				if resultado["Type"] == "error" || errCalendario != nil || resultado["Status"] == "404" || resultado["Message"] != nil {
 					success = false
 				} else {
-					if id, err := strconv.Atoi(idCalendario); err == nil {
-						RegistrarAuditoria("calendario", id, "PUT", calendarioAnterior, resultado, usuario, "PutInhabilitarCalendario/calendario")
-					}
-
 					errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"proceso?query=Activo:true,CalendarioID__Id:"+idCalendario, &procesos)
 					if errCalendario == nil {
 						if len(procesos) > 0 && procesos[0] != nil && len(procesos[0]) > 0 {
@@ -361,17 +350,12 @@ func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) 
 
 								idProceso := fmt.Sprintf("%.f", proceso["Id"].(float64))
 
-								procesoAnterior := helpers.DeepCopyMap(proceso)
 								proceso["Activo"] = false
 
 								errCalendario := request.SendJson(beego.AppConfig.String("EventoService")+"proceso/"+idProceso, "PUT", &resultado, proceso)
 								if resultado["Type"] == "error" || errCalendario != nil || resultado["Status"] == "404" || resultado["Message"] != nil {
 									success = false
 								} else {
-									if id, err := strconv.Atoi(idProceso); err == nil {
-										RegistrarAuditoria("proceso", id, "PUT", procesoAnterior, resultado, usuario, "PutInhabilitarCalendario/proceso")
-									}
-
 									errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=Activo:true,ProcesoId__Id:"+idProceso, &calendarioEvento)
 									if errCalendario == nil {
 										if len(calendarioEvento) > 0 && calendarioEvento[0] != nil && len(calendarioEvento[0]) > 0 {
@@ -380,7 +364,6 @@ func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) 
 
 												idCalendarioEvento := fmt.Sprintf("%.f", cEvento["Id"].(float64))
 
-												cEventoAnterior := helpers.DeepCopyMap(cEvento)
 												cEvento["Activo"] = false
 												helpers.SetTerceroID(cEvento, terceroID)
 
@@ -388,10 +371,7 @@ func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) 
 												if resultado["Type"] == "error" || errCalendario != nil || resultado["Status"] == "404" || resultado["Message"] != nil {
 													success = false
 												} else {
-													if id, err := strconv.Atoi(idCalendarioEvento); err == nil {
-														RegistrarAuditoria("calendario_evento", id, "PUT", cEventoAnterior, resultado, usuario, "PutInhabilitarCalendario/calendario_evento")
-													}
-													if err := inactivarExtensionesActividad(idCalendarioEvento, usuario, "PutInhabilitarCalendario"); err != nil {
+													if err := inactivarExtensionesActividad(idCalendarioEvento); err != nil {
 														logs.Error(err)
 													}
 
@@ -434,7 +414,7 @@ func PutInhabilitarCalendario(idCalendario string, data []byte, usuario string) 
 	}
 }
 
-func PostCalendarioHijo(data []byte, usuario string) (interface{}, error) {
+func PostCalendarioHijo(data []byte) (interface{}, error) {
 	var AuxCalendarioHijo map[string]interface{}
 	var calendarioHijoPost map[string]interface{}
 
@@ -465,9 +445,6 @@ func PostCalendarioHijo(data []byte, usuario string) (interface{}, error) {
 
 		if errCalendarioHijo == nil && fmt.Sprintf("%v", calendarioHijoPost["System"]) != "map[]" && calendarioHijoPost["Id"] != nil {
 			if calendarioHijoPost["Status"] != 400 {
-				if hijoId, ok := calendarioHijoPost["Id"].(float64); ok {
-					RegistrarAuditoria("calendario", int(hijoId), "POST", nil, calendarioHijoPost, usuario, "PostCalendarioIndependiente/calendario")
-				}
 				return requestresponse.APIResponseDTO(true, 200, calendarioHijoPost), nil
 			} else {
 				logs.Error(err)
@@ -581,15 +558,13 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 	var procesoArr []string
 	var proceso map[string]interface{}
 	var procesoResultado []map[string]interface{}
-	var actividad map[string]interface{}
-	var procesoAdd map[string]interface{}
 
 	//var resolucion_ext map[string]interface{}
 
 	if resultado["Type"] != "error" {
 		// consultar calendario evento por tipo evento
 		var calendarios []map[string]interface{}
-		errcalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId__Id.CalendarioID__Id:"+idCalendario, &calendarios)
+		errcalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId__Id.CalendarioID__Id:"+idCalendario+"&limit=0", &calendarios)
 		if errcalendario == nil {
 			if len(calendarios) > 0 && calendarios[0]["Id"] != nil {
 
@@ -654,7 +629,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 				for _, procesoList := range arr {
 
 					var procesos []map[string]interface{}
-					errproceso := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId.Id:"+procesoList+"&ProcesoId__Id.CalendarioID__Id:"+idCalendario, &procesos)
+					errproceso := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId.Id:"+procesoList+"&ProcesoId__Id.CalendarioID__Id:"+idCalendario+"&limit=0", &procesos)
 
 					if errproceso == nil {
 						if procesos != nil {
@@ -663,9 +638,8 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 								responsableList := responsablesActividad(proceso)
 								idActividad := fmt.Sprintf("%.f", proceso["Id"].(float64))
 
-								actividad = nil
 								nombreActividad, descripcionActividad := datosEventoCatalogo(proceso["EventoCatalogoId"])
-								actividad = map[string]interface{}{
+								actividad := map[string]interface{}{
 									"actividadId":      proceso["Id"].(float64),
 									"Nombre":           nombreActividad,
 									"Descripcion":      descripcionActividad,
@@ -674,6 +648,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 									"Activo":           proceso["Activo"].(bool),
 									"ProcesoId":        proceso["ProcesoId"].(map[string]interface{}),
 									"EventoCatalogoId": proceso["EventoCatalogoId"],
+									"NumeroOcurrencia": proceso["NumeroOcurrencia"],
 									"Responsable":      responsableList,
 									"Extensiones":      extensionResumenActividad(idActividad),
 									"DependenciaId":    proceso["DependenciaId"].(string),
@@ -683,8 +658,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 							}
 
 							nombreProceso, _, _ := datosProcesoCatalogo(procesos[0]["ProcesoId"])
-							procesoAdd = nil
-							procesoAdd = map[string]interface{}{
+							procesoAdd := map[string]interface{}{
 								"Proceso":     nombreProceso,
 								"Actividades": actividadResultado,
 							}

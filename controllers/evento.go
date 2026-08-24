@@ -30,10 +30,9 @@ func (c *EventoController) URLMapping() {
 func (c *EventoController) PostEvento() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
 	data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.PostEvento(data, usuario)
+	resultado, err := services.PostEvento(data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -57,11 +56,10 @@ func (c *EventoController) PostEvento() {
 func (c *EventoController) PutEvento() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
 	idStr := c.Ctx.Input.Param(":id")
 	data := c.Ctx.Input.RequestBody
 
-	resultado, err := services.PutEvento(idStr, data, usuario)
+	resultado, err := services.PutEvento(idStr, data)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
@@ -109,10 +107,9 @@ func (c *EventoController) GetEvento() {
 func (c *EventoController) DeleteEvento() {
 	defer errorhandler.HandlePanic(&c.Controller)
 
-	usuario := services.ExtraerUsuario(c.Ctx.Input.Header("Authorization"))
 	id := c.Ctx.Input.Param(":id")
 
-	resultado, err := services.DeleteEvento(id, usuario)
+	resultado, err := services.DeleteEvento(id)
 
 	if err == nil {
 		c.Ctx.Output.SetStatus(200)
