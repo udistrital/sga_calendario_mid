@@ -39,23 +39,13 @@ func PostActividadCalendario(data []byte) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		delete(actividadMap, "NumeroOcurrencia")
 		helpers.SetTerceroID(actividadMap, terceroID)
 		helpers.NormalizeFechasTimeCalendarioEvento("calendario_evento", actividadMap)
-		if err := validarDuplicadoCalendarioEventoConPolitica(actividadMap, "", repetible); err != nil {
+		actividadCalendarioPost, err = crearCalendarioEventoConPolitica(actividadMap, repetible)
+		if err != nil {
 			return nil, errors.New("error del servicio PostActividadCalendario: " + err.Error())
 		}
-		//Solicitid post a eventos service enviando el json recibido
-		errActividad := request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento", "POST", &actividadCalendarioPost, Actividad)
-		if errActividad == nil && fmt.Sprintf("%v", actividadCalendarioPost["System"]) != "map[]" && actividadCalendarioPost["Id"] != nil {
-			if actividadCalendarioPost["Status"] != 400 {
-				IdActividad = actividadCalendarioPost["Id"]
-			} else {
-				logs.Error(errActividad)
-			}
-		} else {
-			logs.Error(errActividad)
-		}
+		IdActividad = actividadCalendarioPost["Id"]
 
 		var totalPublico []interface{}
 		//Guarda el JSON de la tabla tipo publico

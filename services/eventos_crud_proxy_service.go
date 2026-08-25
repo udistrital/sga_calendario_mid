@@ -165,10 +165,11 @@ func PostEventosCrud(recurso string, data []byte) (interface{}, error) {
 			return nil, errors.New("solicitud inválida")
 		}
 		helpers.SetTerceroID(payloadMap, terceroID)
-		delete(payloadMap, "NumeroOcurrencia")
-		if err := validarDuplicadoCalendarioEvento(payloadMap, ""); err != nil {
+		resultado, err := crearCalendarioEvento(payloadMap)
+		if err != nil {
 			return nil, err
 		}
+		return requestresponse.APIResponseDTO(true, 200, resultado), nil
 	}
 
 	var recibido interface{}
@@ -195,6 +196,9 @@ func PutEventosCrud(recurso string, id string, data []byte) (interface{}, error)
 		return nil, err
 	}
 	helpers.NormalizeFechasTimeCalendarioEvento(recurso, payload)
+	if err := validarCambioPoliticaEventos(recurso, id, payload, false); err != nil {
+		return nil, err
+	}
 	if recurso == "calendario_evento" {
 		terceroID, err := helpers.TerceroIDFromPayload(payload)
 		if err != nil {
@@ -227,7 +231,20 @@ func PutEventosCrud(recurso string, id string, data []byte) (interface{}, error)
 			return nil, errors.New("no fue posible consultar la actividad para validar duplicados")
 		}
 		delete(payloadMap, "NumeroOcurrencia")
-		if err := validarDuplicadoCalendarioEvento(calendarioEventoEfectivo(actualMap, payloadMap), id); err != nil {
+		efectivo := calendarioEventoEfectivo(actualMap, payloadMap)
+		if cambioIdentidadCalendarioEvento(actualMap, efectivo) {
+			repetible, err := esRepetibleCalendarioEvento(efectivo)
+			if err != nil {
+				return nil, err
+			}
+			numero, err := siguienteNumeroOcurrencia(efectivo, repetible)
+			if err != nil {
+				return nil, err
+			}
+			payloadMap["NumeroOcurrencia"] = numero
+			efectivo["NumeroOcurrencia"] = numero
+		}
+		if err := validarDuplicadoCalendarioEvento(efectivo, id); err != nil {
 			return nil, err
 		}
 	}
@@ -242,6 +259,17 @@ func PutEventosCrud(recurso string, id string, data []byte) (interface{}, error)
 	}
 
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
+}
+
+func cambioIdentidadCalendarioEvento(actual map[string]interface{}, efectivo map[string]interface{}) bool {
+	procesoAnterior, errProcesoAnterior := helpers.RelationIDToString(actual["ProcesoId"])
+	procesoNuevo, errProcesoNuevo := helpers.RelationIDToString(efectivo["ProcesoId"])
+	eventoAnterior, errEventoAnterior := helpers.RelationIDToString(actual["EventoCatalogoId"])
+	eventoNuevo, errEventoNuevo := helpers.RelationIDToString(efectivo["EventoCatalogoId"])
+	if errProcesoAnterior != nil || errProcesoNuevo != nil || errEventoAnterior != nil || errEventoNuevo != nil {
+		return false
+	}
+	return procesoAnterior != procesoNuevo || eventoAnterior != eventoNuevo
 }
 
 func entidadActualizadaEventos(recurso string, id string, fallback interface{}) interface{} {
@@ -274,10 +302,106 @@ func DeleteEventosCrud(recurso string, id string, data []byte) (interface{}, err
 			helpers.SetTerceroID(payloadMap, terceroID)
 		}
 	}
+	if err := validarCambioPoliticaEventos(recurso, id, payload, true); err != nil {
+		return nil, err
+	}
 	var resultado interface{}
 	if err := request.SendJson(beego.AppConfig.String("EventoService")+recurso+"/"+id, "DELETE", &resultado, payload); err != nil || resultado == nil {
 		return nil, errors.New("no fue posible eliminar el recurso de eventos")
 	}
 
 	return requestresponse.APIResponseDTO(true, 200, resultado), nil
+}
+
+func validarCambioPoliticaEventos(recurso string, id string, payload interface{}, eliminar bool) error {
+	if recurso != "proceso" && recurso != "evento_catalogo_proceso_catalogo" {
+		return nil
+	}
+
+	var actual map[string]interface{}
+	if err := request.GetJson(beego.AppConfig.String("EventoService")+recurso+"/"+id, &actual); err != nil || actual == nil || actual["Type"] == "error" {
+		return errors.New("no fue posible consultar el recurso de eventos")
+	}
+	payloadMap, _ := payload.(map[string]interface{})
+
+	if recurso == "proceso" {
+		if nuevo, existe := payloadMap["ProcesoCatalogoId"]; existe {
+			anteriorID, errAnterior := helpers.RelationIDToString(actual["ProcesoCatalogoId"])
+			nuevoID, errNuevo := helpers.RelationIDToString(nuevo)
+			if errAnterior != nil || errNuevo != nil || anteriorID != nuevoID {
+				return errors.New("el catálogo de un proceso existente no se puede modificar")
+			}
+		}
+		return nil
+	}
+
+	procesoCatalogoID, err := helpers.RelationIDToString(actual["ProcesoCatalogoId"])
+	if err != nil {
+		return errors.New("la relación de catálogos es inválida")
+	}
+	eventoCatalogoID, err := helpers.RelationIDToString(actual["EventoCatalogoId"])
+	if err != nil {
+		return errors.New("la relación de catálogos es inválida")
+	}
+	if nuevo, existe := payloadMap["ProcesoCatalogoId"]; existe {
+		nuevoID, err := helpers.RelationIDToString(nuevo)
+		if err != nil || nuevoID != procesoCatalogoID {
+			return errors.New("los catálogos de una relación existente no se pueden modificar")
+		}
+	}
+	if nuevo, existe := payloadMap["EventoCatalogoId"]; existe {
+		nuevoID, err := helpers.RelationIDToString(nuevo)
+		if err != nil || nuevoID != eventoCatalogoID {
+			return errors.New("los catálogos de una relación existente no se pueden modificar")
+		}
+	}
+
+	desactivar := false
+	if activo, existe := helpers.ActivoFromPayload(payload); existe {
+		desactivar = !activo
+	}
+	if eliminar || desactivar {
+		tieneActivas, err := relacionTieneOcurrenciasActivas(procesoCatalogoID, eventoCatalogoID, false)
+		if err != nil {
+			return err
+		}
+		if tieneActivas {
+			return errors.New("no se puede retirar una relación utilizada por actividades activas")
+		}
+	}
+
+	repetibleAnterior, _ := actual["Repetible"].(bool)
+	repetibleNuevo, cambiaRepetible := payloadMap["Repetible"].(bool)
+	if cambiaRepetible && repetibleAnterior && !repetibleNuevo {
+		tieneMultiples, err := relacionTieneOcurrenciasActivas(procesoCatalogoID, eventoCatalogoID, true)
+		if err != nil {
+			return err
+		}
+		if tieneMultiples {
+			return errors.New("no se puede marcar la relación como no repetible mientras existan varias ocurrencias activas")
+		}
+	}
+	return nil
+}
+
+func relacionTieneOcurrenciasActivas(procesoCatalogoID string, eventoCatalogoID string, multiples bool) (bool, error) {
+	var procesos []map[string]interface{}
+	if err := request.GetJson(beego.AppConfig.String("EventoService")+"proceso?query=ProcesoCatalogoId__Id:"+procesoCatalogoID+"&limit=0", &procesos); err != nil {
+		return false, errors.New("no fue posible validar las actividades de la relación")
+	}
+	for _, proceso := range procesos {
+		procesoID, err := helpers.RelationIDToString(proceso["Id"])
+		if err != nil {
+			continue
+		}
+		var actividades []map[string]interface{}
+		url := beego.AppConfig.String("EventoService") + "calendario_evento?query=ProcesoId__Id:" + procesoID + ",EventoCatalogoId__Id:" + eventoCatalogoID + ",Activo:true&limit=0"
+		if err := request.GetJson(url, &actividades); err != nil {
+			return false, errors.New("no fue posible validar las actividades de la relación")
+		}
+		if (!multiples && len(actividades) > 0) || (multiples && len(actividades) > 1) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

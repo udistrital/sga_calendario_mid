@@ -12,6 +12,8 @@ import (
 	"github.com/udistrital/utils_oas/request"
 )
 
+const maxIntentosCrearCalendarioEvento = 3
+
 func validarDuplicadoCalendarioEvento(evento map[string]interface{}, idExcluir string) error {
 	activo, ok := evento["Activo"].(bool)
 	if !ok || !activo {
@@ -44,6 +46,78 @@ func validarDuplicadoCalendarioEventoConPolitica(evento map[string]interface{}, 
 		return errors.New("no fue posible validar duplicados de actividad")
 	}
 	return validarActividadActivaExistente(evento, existentes, idExcluir, repetible)
+}
+
+func crearCalendarioEvento(evento map[string]interface{}) (map[string]interface{}, error) {
+	repetible, err := esRepetibleCalendarioEvento(evento)
+	if err != nil {
+		return nil, err
+	}
+	return crearCalendarioEventoConPolitica(evento, repetible)
+}
+
+func crearCalendarioEventoConPolitica(evento map[string]interface{}, repetible bool) (map[string]interface{}, error) {
+	for intento := 1; intento <= maxIntentosCrearCalendarioEvento; intento++ {
+		numero, err := siguienteNumeroOcurrencia(evento, repetible)
+		if err != nil {
+			return nil, err
+		}
+		evento["NumeroOcurrencia"] = numero
+
+		if err := validarDuplicadoCalendarioEventoConPolitica(evento, "", repetible); err != nil {
+			return nil, err
+		}
+
+		var resultado map[string]interface{}
+		err = request.SendJson(beego.AppConfig.String("EventoService")+"calendario_evento", "POST", &resultado, evento)
+		if err == nil && !helpers.EventosPostResponseInvalid(resultado) {
+			return resultado, nil
+		}
+		if !repetible || !esConflictoNumeroOcurrencia(resultado, err) || intento == maxIntentosCrearCalendarioEvento {
+			return nil, errors.New("no fue posible crear la actividad de calendario")
+		}
+	}
+
+	return nil, errors.New("no fue posible asignar el número de ocurrencia")
+}
+
+func siguienteNumeroOcurrencia(evento map[string]interface{}, repetible bool) (int, error) {
+	if !repetible {
+		return 1, nil
+	}
+
+	procesoID, err := helpers.RelationIDToString(evento["ProcesoId"])
+	if err != nil {
+		return 0, errors.New("no fue posible asignar la ocurrencia: proceso inválido")
+	}
+	eventoCatalogoID, err := helpers.RelationIDToString(evento["EventoCatalogoId"])
+	if err != nil {
+		return 0, errors.New("no fue posible asignar la ocurrencia: evento de catálogo inválido")
+	}
+
+	var existentes []map[string]interface{}
+	url := fmt.Sprintf(
+		"%scalendario_evento?query=ProcesoId__Id:%s,EventoCatalogoId__Id:%s&sortby=NumeroOcurrencia&order=desc&limit=1",
+		beego.AppConfig.String("EventoService"),
+		procesoID,
+		eventoCatalogoID,
+	)
+	if err := request.GetJson(url, &existentes); err != nil {
+		return 0, errors.New("no fue posible consultar el número de ocurrencia")
+	}
+	if len(existentes) == 0 || len(existentes[0]) == 0 {
+		return 1, nil
+	}
+	ultimo, ok := helpers.InterfaceToInt(existentes[0]["NumeroOcurrencia"])
+	if !ok || ultimo < 1 {
+		return 0, errors.New("el número de ocurrencia existente es inválido")
+	}
+	return ultimo + 1, nil
+}
+
+func esConflictoNumeroOcurrencia(resultado map[string]interface{}, err error) bool {
+	mensaje := strings.ToLower(fmt.Sprintf("%v %v", err, resultado))
+	return strings.Contains(mensaje, "uq_calendario_evento_ocurrencia_activa")
 }
 
 func esRepetibleCalendarioEvento(evento map[string]interface{}) (bool, error) {
