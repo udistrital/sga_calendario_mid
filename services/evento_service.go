@@ -202,9 +202,9 @@ func GetEvento(persona string) (interface{}, error) {
 				}
 				// cargar nombre de la dependencia
 				calendarioEvento := evento["CalendarioEvento"].(map[string]interface{})
-				tipoEvento := calendarioEvento["TipoEventoId"].(map[string]interface{})
+				proceso := calendarioEvento["ProcesoId"].(map[string]interface{})
 				var dependencia []map[string]interface{}
-				errDependencia := request.GetJson(beego.AppConfig.String("OikosService")+"dependencia_tipo_dependencia/?query=DependenciaId__Id:"+fmt.Sprintf("%.f", tipoEvento["DependenciaId"].(float64)), &dependencia)
+				errDependencia := request.GetJson(beego.AppConfig.String("OikosService")+"dependencia_tipo_dependencia/?query=DependenciaId__Id:"+fmt.Sprintf("%.f", proceso["DependenciaId"].(float64)), &dependencia)
 				if dependencia == nil || errDependencia != nil {
 					success = false
 					message += "Error: errDependencia es nil"
@@ -227,8 +227,10 @@ func GetEvento(persona string) (interface{}, error) {
 				}
 				evento["FechaInicio"] = calendarioEvento["FechaInicio"]
 				evento["FechaFin"] = calendarioEvento["FechaFin"]
-				evento["Descripcion"] = calendarioEvento["Descripcion"]
-				evento["TipoEvento"] = tipoEvento["Nombre"]
+				_, descripcionEvento := datosEventoCatalogo(calendarioEvento["EventoCatalogoId"])
+				nombreProceso, _, _ := datosProcesoCatalogo(proceso)
+				evento["Descripcion"] = descripcionEvento
+				evento["Proceso"] = nombreProceso
 				evento["Dependencia"] = calendarioEvento["DependenciaId"].(map[string]interface{})["Nombre"]
 
 			}
