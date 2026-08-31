@@ -11,7 +11,6 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"github.com/udistrital/sga_calendario_mid/helpers"
-	"github.com/udistrital/sga_calendario_mid/models"
 	"github.com/udistrital/utils_oas/request"
 	"github.com/udistrital/utils_oas/requestresponse"
 	"github.com/udistrital/utils_oas/time_bogota"
@@ -115,22 +114,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 				errdocumento := request.GetJson(beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
 
 				if errdocumento == nil {
-					if documentos != nil {
-						metadatoJSON := documentos["Metadatos"].(string)
-						var metadato models.Metadatos
-						json.Unmarshal([]byte(metadatoJSON), &metadato)
-
-						resolucion = map[string]interface{}{
-							"Id":         documentos["Id"],
-							"Enlace":     documentos["Enlace"],
-							"Resolucion": metadato.Resolucion,
-							"Anno":       metadato.Anno,
-							"Nombre":     documentos["Nombre"],
-						}
-					} else {
-						return requestresponse.APIResponseDTO(true, 200, documentos), nil
-					}
-
+					resolucion = resolucionDesdeDocumento(documentos)
 				} else {
 					logs.Error(errdocumento.Error())
 				}
@@ -259,24 +243,7 @@ func GetOnePorId(idCalendario string) (interface{}, error) {
 						errdocumento := request.GetJson(beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
 
 						if errdocumento == nil {
-
-							if documentos != nil {
-
-								metadatoJSON := documentos["Metadatos"].(string)
-								var metadato models.Metadatos
-								json.Unmarshal([]byte(metadatoJSON), &metadato)
-
-								resolucion = map[string]interface{}{
-									"Id":         documentos["Id"],
-									"Enlace":     documentos["Enlace"],
-									"Resolucion": metadato.Resolucion,
-									"Anno":       metadato.Anno,
-									"Nombre":     documentos["Nombre"],
-								}
-							} else {
-								return requestresponse.APIResponseDTO(true, 200, documentos), nil
-							}
-
+							resolucion = resolucionDesdeDocumento(documentos)
 						} else {
 							logs.Error(errdocumento.Error())
 						}
@@ -575,22 +542,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 				errdocumento := request.GetJson(beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
 
 				if errdocumento == nil {
-					if documentos != nil {
-						metadatoJSON := documentos["Metadatos"].(string)
-						var metadato models.Metadatos
-						json.Unmarshal([]byte(metadatoJSON), &metadato)
-
-						resolucion = map[string]interface{}{
-							"Id":         documentos["Id"],
-							"Enlace":     documentos["Enlace"],
-							"Resolucion": metadato.Resolucion,
-							"Anno":       metadato.Anno,
-							"Nombre":     documentos["Nombre"],
-						}
-					} else {
-						return requestresponse.APIResponseDTO(true, 200, documentos), nil
-					}
-
+					resolucion = resolucionDesdeDocumento(documentos)
 				} else {
 					logs.Error(errdocumento.Error())
 				}
@@ -705,23 +657,7 @@ func GetCalendarInfo(idCalendario string) (interface{}, error) {
 						errdocumento := request.GetJson(beego.AppConfig.String("DocumentosService")+"documento/"+documentoID, &documentos)
 
 						if errdocumento == nil {
-
-							if documentos != nil {
-
-								metadatoJSON := documentos["Metadatos"].(string)
-								var metadato models.Metadatos
-								json.Unmarshal([]byte(metadatoJSON), &metadato)
-
-								resolucion = map[string]interface{}{
-									"Id":         documentos["Id"],
-									"Enlace":     documentos["Enlace"],
-									"Resolucion": metadato.Resolucion,
-									"Anno":       metadato.Anno,
-									"Nombre":     documentos["Nombre"],
-								}
-							} else {
-								return requestresponse.APIResponseDTO(true, 200, documentos), nil
-							}
+							resolucion = resolucionDesdeDocumento(documentos)
 
 						} else {
 							logs.Error(errdocumento.Error())
