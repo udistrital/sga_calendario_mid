@@ -7,4 +7,5 @@ main
 swagger/**
 !swagger/swagger.json
 !swagger/swagger.yml
-.env
+*.env
+!template.env
