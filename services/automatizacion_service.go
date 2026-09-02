@@ -9,6 +9,7 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/go-co-op/gocron"
+	"github.com/udistrital/sga_calendario_mid/helpers"
 )
 
 func VerificacionActividadesDiarias() {
@@ -31,13 +32,13 @@ func VerificacionActividadesDiarias() {
 						continue
 					}
 
-					fechaFin, err := time.Parse(time.RFC3339, fechaFinStr)
+					fechaFin, err := helpers.ParseFecha(fechaFinStr)
 					if err != nil {
 						fmt.Println("Error al parsear la FechaFin:", err)
 						continue
 					}
 
-					now := time.Now().UTC()
+					now := time.Now().In(helpers.GMTMinus5Location)
 
 					// Comparar solo la fecha (ignorando la hora)
 					if isSameDate(fechaFin, now) {
@@ -85,7 +86,7 @@ func VerificacionActividadesEjecucionUnica(scheduler *gocron.Scheduler) {
 					// fechaFinStr := "2024-07-18T21:49:00Z"
 					fmt.Println("FechaFin:", fechaFinStr)
 
-					fechaFin, err := time.Parse(time.RFC3339, fechaFinStr)
+					fechaFin, err := helpers.ParseFecha(fechaFinStr)
 					if err != nil {
 						fmt.Println("Error parsing fechaFinStr:", err)
 						// continue
@@ -111,7 +112,7 @@ func VerificacionActividadesEjecucionUnica(scheduler *gocron.Scheduler) {
 }
 
 func ScheduleOneTimeTask(scheduler *gocron.Scheduler, t time.Time, task func()) {
-	if t.After(time.Now()) {
+	if t.In(helpers.GMTMinus5Location).After(time.Now().In(helpers.GMTMinus5Location)) {
 		scheduler.StartAt(t).Do(task)
 		fmt.Printf("Task scheduled to run at %v\n", t)
 	} else {

@@ -4,180 +4,154 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
+	"time"
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
+	"github.com/udistrital/sga_calendario_mid/helpers"
 	"github.com/udistrital/utils_oas/request"
 	"github.com/udistrital/utils_oas/requestresponse"
+	"github.com/udistrital/utils_oas/time_bogota"
 )
+
+const dependenciaVaciaEvento = `{"proyectos":[],"fechas":[]}`
+
+var fechaBaseClonacion = time.Date(2000, time.January, 1, 0, 0, 0, 0, helpers.GMTMinus5Location)
 
 func PostCalendario(data []byte) (interface{}, error) {
 	var calendario map[string]interface{}
 	var calendarioParam []map[string]interface{}
-	var tipoEvento []map[string]interface{}
-	var calendarioEvento []map[string]interface{}
-	var calendarioEventoTipoPublico []map[string]interface{}
-	var tipoPublico map[string]interface{}
-	var resultadoPost map[string]interface{}
-	var resultadoPostResponsable map[string]interface{}
-	var errCalendarioParam = errors.New("")
-	var errorGetAll bool
-	var message string
+	var proceso []map[string]interface{}
 
 	var dataPost map[string]interface{}
-	if err := json.Unmarshal(data, &dataPost); err == nil {
+	if err := json.Unmarshal(data, &dataPost); err != nil {
+		return nil, errors.New("error del servicio PostCalendario: solicitud inválida")
+	}
+	terceroID, err := helpers.TerceroIDFromPayload(dataPost)
+	if err != nil {
+		return nil, errors.New("error del servicio PostCalendario: " + err.Error())
+	}
+	idCalendario, ok := helpers.IDToString(dataPost["Id"])
+	if !ok {
+		return nil, errors.New("error del servicio PostCalendario: calendario destino inválido")
+	}
+	idPeriodo, ok := helpers.IDToString(dataPost["PeriodoIdClone"])
+	if !ok {
+		return nil, errors.New("error del servicio PostCalendario: periodo origen inválido")
+	}
+	idNivel, ok := helpers.IDToString(dataPost["NivelClone"])
+	if !ok {
+		return nil, errors.New("error del servicio PostCalendario: nivel origen inválido")
+	}
 
-		idCalendario := fmt.Sprintf("%.f", dataPost["Id"].(float64))
-		idPeriodo := fmt.Sprintf("%.f", dataPost["PeriodoIdClone"].(float64))
-		idNivel := fmt.Sprintf("%.f", dataPost["NivelClone"].(float64))
+	if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario); err != nil || calendario == nil || calendario["Type"] == "error" || calendario["Id"] == nil {
+		return nil, errors.New("error del servicio PostCalendario: no se encontró calendario destino")
+	}
 
-		errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario)
-		if errCalendario == nil {
-			if calendario != nil {
+	if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=Activo:true,PeriodoId:"+idPeriodo+",Nivel:"+idNivel+"&sortby=Id&order=desc", &calendarioParam); err != nil {
+		return nil, errors.New("error del servicio PostCalendario: no fue posible consultar calendario origen")
+	}
+	if len(calendarioParam) == 0 || calendarioParam[0]["Id"] == nil {
+		return nil, errors.New("error del servicio PostCalendario: no se encontró calendario origen activo para el periodo y nivel seleccionados")
+	}
+	idCalendarioParam, ok := helpers.IDToString(calendarioParam[0]["Id"])
+	if !ok {
+		return nil, errors.New("error del servicio PostCalendario: calendario origen inválido")
+	}
 
-				// if dataPost["NivelClone"].(float64) == calendario["Nivel"].(float64) {
-				// 	errCalendarioParam = request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=Activo:true,PeriodoId:"+idPeriodo+",Nivel:"+idNivel+"&sortby=Id&order=desc&offset=1&limit=0", &calendarioParam)
-				// } else {
-				// 	errCalendarioParam = request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=Activo:true,PeriodoId:"+idPeriodo+",Nivel:"+idNivel+"&sortby=Id&order=desc", &calendarioParam)
-				// }
+	if err := request.GetJson(beego.AppConfig.String("EventoService")+"proceso?query=CalendarioID__Id:"+idCalendarioParam+"&limit=0", &proceso); err != nil {
+		return nil, errors.New("error del servicio PostCalendario: no fue posible consultar procesos del calendario origen")
+	}
+	if len(proceso) == 0 || proceso[0]["Id"] == nil {
+		return nil, errors.New("error del servicio PostCalendario: no se encontraron procesos en el calendario origen")
+	}
 
-				errCalendarioParam = request.GetJson(beego.AppConfig.String("EventoService")+"calendario?query=Activo:true,PeriodoId:"+idPeriodo+",Nivel:"+idNivel+"&sortby=Id&order=desc", &calendarioParam)
-
-				if errCalendarioParam == nil {
-					if calendarioParam != nil && calendarioParam[0]["Id"] != nil {
-
-						idCalendarioParam := fmt.Sprintf("%.f", calendarioParam[0]["Id"].(float64))
-
-						// persistir tipo_evento si el calendario que se esta clonando los tiene
-						errTipoEvento := request.GetJson(beego.AppConfig.String("EventoService")+"tipo_evento?query=CalendarioID__Id:"+idCalendarioParam, &tipoEvento)
-						if errTipoEvento == nil {
-							if tipoEvento != nil && tipoEvento[0]["Id"] != nil {
-								for _, tEvento := range tipoEvento {
-
-									idOld := fmt.Sprintf("%.f", tEvento["Id"].(float64))
-									tEvento["Id"] = 0
-									tEvento["CalendarioID"] = calendario
-
-									errTipoEventoPost := request.SendJson(beego.AppConfig.String("EventoService")+"/tipo_evento", "POST", &resultadoPost, tEvento)
-									if errTipoEventoPost == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
-										if resultadoPost["Status"] != 400 {
-											tEvento["Id"] = resultadoPost["Id"]
-
-											// presistir calendario_evento si el tipo_evento que se esta clonando esta asociado en el campo tipo_evento_id del calendario_evento
-											errCalendarioEvento := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId__Id:"+idOld, &calendarioEvento)
-											if errCalendarioEvento == nil {
-												if calendarioEvento != nil && calendarioEvento[0]["Id"] != nil {
-													idCalendarioEventoOld := fmt.Sprintf("%.f", calendarioEvento[0]["Id"].(float64))
-													for _, cEvento := range calendarioEvento {
-
-														cEvento["Id"] = 0
-														cEvento["TipoEventoId"] = tEvento
-														cEvento["FechaInicio"] = "2020-01-01T00:00:00-05:00"
-														cEvento["FechaFin"] = "2020-01-01T00:00:00-05:00"
-
-														errCalendarioEventoPost := request.SendJson(beego.AppConfig.String("EventoService")+"/calendario_evento", "POST", &resultadoPost, cEvento)
-														if errCalendarioEventoPost == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
-															if resultadoPost["Status"] != 400 {
-
-																//validar si existe relcion de responsables, tabla rompimiento calendario_evento_tipo_publico y tipo_publico
-																errCalendarioEventoTipoPublico := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+idCalendarioEventoOld, &calendarioEventoTipoPublico)
-																if errCalendarioEventoTipoPublico == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
-																	if resultadoPost["Status"] == nil {
-																		for _, cEventoTipoPublico := range calendarioEventoTipoPublico {
-																			tipoPublicoOld := fmt.Sprintf("%.f", cEventoTipoPublico["TipoPublicoId"].(map[string]interface{})["Id"].(float64))
-																			errTipoPublico := request.GetJson(beego.AppConfig.String("EventoService")+"tipo_publico/"+tipoPublicoOld, &tipoPublico)
-																			if errTipoPublico == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
-																				if resultadoPost["Status"] == nil {
-
-																					cEventoTipoPublico["Id"] = 0
-																					cEventoTipoPublico["CalendarioEventoId"] = resultadoPost
-																					cEventoTipoPublico["TipoPublicoId"] = tipoPublico
-
-																					errCalendarioEventoPost := request.SendJson(beego.AppConfig.String("EventoService")+"/calendario_evento_tipo_publico", "POST", &resultadoPostResponsable, cEventoTipoPublico)
-																					if errCalendarioEventoPost == nil && fmt.Sprintf("%v", resultadoPostResponsable["System"]) != "map[]" && resultadoPostResponsable["Id"] != nil {
-																						if resultadoPost["Status"] != 400 {
-																							// fmt.Println("calendario_evento nuevo: ", resultadoPostResponsable["Id"])
-																						}
-																					}
-
-																				}
-																			} else {
-																				errorGetAll = true
-																				message += errTipoPublico.Error()
-																			}
-																		}
-																	}
-																} else {
-																	errorGetAll = true
-																	message += errCalendarioEventoTipoPublico.Error()
-																}
-
-															}
-														} else {
-															errorGetAll = true
-															message += errCalendarioEventoPost.Error()
-														}
-
-													}
-												}
-											} else {
-												errorGetAll = true
-												message += errCalendarioEvento.Error()
-											}
-										}
-									} else {
-										errorGetAll = true
-										message += errTipoEventoPost.Error()
-									}
-
-								}
-
-							} else {
-								errorGetAll = true
-								message += "No data found tipoEvento[0]"
-							}
-						} else {
-							errorGetAll = true
-							message += errTipoEvento.Error()
-						}
-					} else {
-						errorGetAll = true
-						message += "No data found calendarioParam[0]"
-					}
-				} else {
-					errorGetAll = true
-					message += errCalendarioParam.Error()
-				}
-			} else {
-				errorGetAll = true
-				message += "No data found"
-			}
-		} else {
-			errorGetAll = true
-			message += errCalendarioParam.Error()
+	for _, procesoOrigen := range proceso {
+		idProcesoOrigen, ok := helpers.IDToString(procesoOrigen["Id"])
+		if !ok {
+			return nil, errors.New("error del servicio PostCalendario: proceso origen inválido")
 		}
 
+		procesoOrigen["Id"] = 0
+		procesoOrigen["CalendarioID"] = calendario
+
+		var procesoClonado map[string]interface{}
+		if err := request.SendJson(beego.AppConfig.String("EventoService")+"/proceso", "POST", &procesoClonado, procesoOrigen); err != nil || helpers.EventosPostResponseInvalid(procesoClonado) {
+			return nil, errors.New("error del servicio PostCalendario: no fue posible crear un proceso clonado")
+		}
+		procesoOrigen["Id"] = procesoClonado["Id"]
+
+		var actividades []map[string]interface{}
+		if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId__Id:"+idProcesoOrigen+"&limit=0", &actividades); err != nil {
+			return nil, errors.New("error del servicio PostCalendario: no fue posible consultar actividades del proceso origen")
+		}
+		if len(actividades) == 0 || actividades[0]["Id"] == nil {
+			continue
+		}
+		prepararActividadesClonacion(actividades)
+
+		for _, actividadOrigen := range actividades {
+			idActividadOrigen, ok := helpers.IDToString(actividadOrigen["Id"])
+			if !ok {
+				return nil, errors.New("error del servicio PostCalendario: actividad origen inválida")
+			}
+
+			actividadOrigen["Id"] = 0
+			actividadOrigen["ProcesoId"] = procesoOrigen
+			actividadOrigen["DependenciaId"] = dependenciaVaciaEvento
+			helpers.SetTerceroID(actividadOrigen, terceroID)
+
+			actividadClonada, err := crearCalendarioEvento(actividadOrigen)
+			if err != nil {
+				return nil, errors.New("error del servicio PostCalendario: no fue posible crear una actividad clonada")
+			}
+
+			var publicos []map[string]interface{}
+			if err := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+idActividadOrigen+"&limit=0", &publicos); err != nil {
+				return nil, errors.New("error del servicio PostCalendario: no fue posible consultar públicos dirigidos de la actividad origen")
+			}
+			for _, publicoOrigen := range publicos {
+				if publicoOrigen["Id"] == nil {
+					continue
+				}
+				publicoOrigen["Id"] = 0
+				publicoOrigen["CalendarioEventoId"] = actividadClonada
+
+				var publicoClonado map[string]interface{}
+				if err := request.SendJson(beego.AppConfig.String("EventoService")+"/calendario_evento_tipo_publico", "POST", &publicoClonado, publicoOrigen); err != nil || helpers.EventosPostResponseInvalid(publicoClonado) {
+					return nil, errors.New("error del servicio PostCalendario: no fue posible crear un público dirigido clonado")
+				}
+			}
+		}
 	}
-	if !errorGetAll {
-		return calendario, nil
-	} else {
-		return nil, errors.New("error del servicio PostCalendario: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
-	}
+
+	return requestresponse.APIResponseDTO(true, 200, calendario), nil
 }
 
 func PostCalendarioPadre(data []byte) (interface{}, error) {
 	var calendario map[string]interface{}
 	var calendarioParam []map[string]interface{}
-	var tipoEvento []map[string]interface{}
+	var proceso []map[string]interface{}
 	var calendarioEvento []map[string]interface{}
+	var calendarioEventoTipoPublico []map[string]interface{}
 	var resultadoPost map[string]interface{}
+	var resultadoPostResponsable map[string]interface{}
 	var resultado map[string]interface{}
 	var errCalendarioParam = errors.New("")
 	var errorGetAll bool
 
 	var dataPost map[string]interface{}
 	if err := json.Unmarshal(data, &dataPost); err == nil {
-		idCalendario := fmt.Sprintf("%.f", dataPost["Id"].(float64))
+		terceroID, terceroErr := helpers.TerceroIDFromPayload(dataPost)
+		if terceroErr != nil {
+			return nil, errors.New("error del servicio PostCalendarioPadre: " + terceroErr.Error())
+		}
+		idCalendario, err := calendarioDestinoClonacion(dataPost)
+		if err != nil {
+			return nil, err
+		}
 		idCalendarioPadre := fmt.Sprintf("%.f", dataPost["IdPadre"].(map[string]interface{})["Id"])
 		errCalendario := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+idCalendario, &calendario)
 		if errCalendario == nil {
@@ -189,70 +163,76 @@ func PostCalendarioPadre(data []byte) (interface{}, error) {
 				}
 
 				if errCalendarioParam == nil {
-					if calendarioParam != nil && calendarioParam[0]["Id"] != nil {
+					if len(calendarioParam) > 0 && calendarioParam[0]["Id"] != nil {
 						idCalendarioParam := fmt.Sprintf("%.f", calendarioParam[0]["Id"].(float64))
 
-						// persistir tipo_evento si el calendario que se esta clonando los tiene
-						errTipoEvento := request.GetJson(beego.AppConfig.String("EventoService")+"tipo_evento?query=CalendarioID__Id:"+idCalendarioParam, &tipoEvento)
-						if errTipoEvento == nil {
-							if tipoEvento != nil && tipoEvento[0]["Id"] != nil {
-								for _, tEvento := range tipoEvento {
-									idOld := fmt.Sprintf("%.f", tEvento["Id"].(float64))
-									tEvento["Id"] = 0
-									tEvento["CalendarioID"] = calendario
+						// persistir procesos si el calendario que se esta clonando los tiene
+						errProceso := request.GetJson(beego.AppConfig.String("EventoService")+"proceso?query=CalendarioID__Id:"+idCalendarioParam+"&limit=0", &proceso)
+						if errProceso == nil {
+							resultado = map[string]interface{}{
+								"Id": idCalendario,
+							}
+							if len(proceso) > 0 && proceso[0]["Id"] != nil {
+								for _, procesoOrigen := range proceso {
+									idOld := fmt.Sprintf("%.f", procesoOrigen["Id"].(float64))
+									procesoOrigen["Id"] = 0
+									procesoOrigen["CalendarioID"] = calendario
 
-									errTipoEventoPost := request.SendJson(beego.AppConfig.String("EventoService")+"/tipo_evento", "POST", &resultadoPost, tEvento)
-									if errTipoEventoPost == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
+									errProcesoPost := request.SendJson(beego.AppConfig.String("EventoService")+"/proceso", "POST", &resultadoPost, procesoOrigen)
+									if errProcesoPost == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
 										if resultadoPost["Status"] != 400 {
-											tEvento["Id"] = resultadoPost["Id"]
+											procesoOrigen["Id"] = resultadoPost["Id"]
 
-											// presistir calendario_evento si el tipo_evento que se esta clonando esta asociado en el campo tipo_evento_id del calendario_evento
-											errCalendarioEvento := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId__Id:"+idOld, &calendarioEvento)
+											// persistir calendario_evento si el proceso que se esta clonando esta asociado en el campo proceso_id del calendario_evento
+											errCalendarioEvento := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=ProcesoId__Id:"+idOld+"&limit=0", &calendarioEvento)
 											if errCalendarioEvento == nil {
-												if calendarioEvento != nil && calendarioEvento[0]["Id"] != nil {
+												if len(calendarioEvento) > 0 && calendarioEvento[0]["Id"] != nil {
+													prepararActividadesClonacion(calendarioEvento)
 													for _, cEvento := range calendarioEvento {
+														idCalendarioEventoOld := fmt.Sprintf("%.f", cEvento["Id"].(float64))
 														cEvento["Id"] = 0
-														cEvento["TipoEventoId"] = tEvento
-														cEvento["FechaInicio"] = "2000-01-01T00:00:00-05:00"
-														cEvento["FechaFin"] = "2000-01-01T00:00:00-05:00"
+														cEvento["ProcesoId"] = procesoOrigen
+														cEvento["DependenciaId"] = dependenciaVaciaEvento
+														helpers.SetTerceroID(cEvento, terceroID)
 
-														errCalendarioEventoPost := request.SendJson(beego.AppConfig.String("EventoService")+"/calendario_evento", "POST", &resultadoPost, cEvento)
-														if errCalendarioEventoPost == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
-															if resultadoPost["Status"] != 400 {
-																fmt.Println("calendario_evento nuevo: ", resultadoPost["Id"])
+														resultadoPostActividad, errCalendarioEventoPost := crearCalendarioEvento(cEvento)
+														if errCalendarioEventoPost == nil {
+															errCalendarioEventoTipoPublico := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+idCalendarioEventoOld+"&limit=0", &calendarioEventoTipoPublico)
+															if errCalendarioEventoTipoPublico == nil {
+																for _, cEventoTipoPublico := range calendarioEventoTipoPublico {
+																	cEventoTipoPublico["Id"] = 0
+																	cEventoTipoPublico["CalendarioEventoId"] = resultadoPostActividad
+																	if err := request.SendJson(beego.AppConfig.String("EventoService")+"/calendario_evento_tipo_publico", "POST", &resultadoPostResponsable, cEventoTipoPublico); err != nil {
+																		errorGetAll = true
+																		logs.Error(err.Error())
+																	}
+																}
 															} else {
 																errorGetAll = true
-																logs.Error(errCalendarioEventoPost.Error())
+																logs.Error(errCalendarioEventoTipoPublico.Error())
 															}
 														} else {
 															errorGetAll = true
+															logs.Error(errCalendarioEventoPost.Error())
 														}
 													}
-												} else {
-													errorGetAll = true
-													logs.Error(errCalendarioEvento.Error())
 												}
 											} else {
 												errorGetAll = true
+												logs.Error(errCalendarioEvento.Error())
 											}
 										} else {
 											errorGetAll = true
-											logs.Error(errTipoEventoPost.Error())
+											logs.Error(errProcesoPost.Error())
 										}
 									} else {
 										errorGetAll = true
 									}
-
 								}
-								resultado = map[string]interface{}{
-									"Id": idCalendario,
-								}
-							} else {
-								errorGetAll = true
 							}
 						} else {
 							errorGetAll = true
-							logs.Error(errTipoEvento.Error())
+							logs.Error(errProceso.Error())
 						}
 					} else {
 						errorGetAll = true
@@ -274,155 +254,78 @@ func PostCalendarioPadre(data []byte) (interface{}, error) {
 	}
 
 	if !errorGetAll {
-		return resultado, nil
+		return requestresponse.APIResponseDTO(true, 200, resultado), nil
 	} else {
 		return nil, errors.New("error del servicio PostCalendarioPadre: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 	}
 }
 
-func PostCalendarioExtension(data []byte) (interface{}, error) {
-	var CalendarioExtension map[string]interface{}
-	var CalendarioPadre map[string]interface{}
-	var CalendarioExtCrear map[string]interface{}
-
-	var tipoEvento []map[string]interface{}
-	var calendarioEvento []map[string]interface{}
-	var calendarioEventoTipoPublico []map[string]interface{}
-	var tipoPublico map[string]interface{}
-	var resultadoPost map[string]interface{}
-	var resultadoPostResponsable map[string]interface{}
-
-	if err := json.Unmarshal(data, &CalendarioExtension); err == nil {
-		IdPadre := fmt.Sprintf("%.f", CalendarioExtension["CalendarioPadre"])
-
-		errCalendarioPadre := request.GetJson(beego.AppConfig.String("EventoService")+"calendario/"+IdPadre, &CalendarioPadre)
-		if errCalendarioPadre == nil {
-			if _, ok := CalendarioPadre["Id"]; ok {
-				CalendarioPadre["AplicaExtension"] = true
-				CalendarioPadre["DependenciaParticularId"] = CalendarioExtension["Dependencias"]
-				CalendarioPadre["DocumentoExtensionId"] = CalendarioExtension["DocumentoExtensionId"]
-				CalendarioPadre["CalendarioPadreId"] = map[string]interface{}{"Id": CalendarioExtension["CalendarioPadre"]}
-				delete(CalendarioPadre, "Id")
-
-				errCalendarioExtCrear := request.SendJson(beego.AppConfig.String("EventoService")+"calendario", "POST", &CalendarioExtCrear, CalendarioPadre)
-				if errCalendarioExtCrear == nil {
-
-					// persistir tipo_evento si el calendario que se esta clonando los tiene
-					errTipoEvento := request.GetJson(beego.AppConfig.String("EventoService")+"tipo_evento?query=CalendarioID__Id:"+IdPadre+",Activo:true&limit=0", &tipoEvento)
-					if errTipoEvento == nil {
-						if tipoEvento != nil && tipoEvento[0]["Id"] != nil {
-							for _, tEvento := range tipoEvento {
-
-								idOld := fmt.Sprintf("%.f", tEvento["Id"].(float64))
-								tEvento["Id"] = 0
-								tEvento["CalendarioID"] = CalendarioExtCrear
-
-								errTipoEventoPost := request.SendJson(beego.AppConfig.String("EventoService")+"/tipo_evento", "POST", &resultadoPost, tEvento)
-								if errTipoEventoPost == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
-									if resultadoPost["Status"] != 400 {
-										tEvento["Id"] = resultadoPost["Id"]
-
-										// presistir calendario_evento si el tipo_evento que se esta clonando esta asociado en el campo tipo_evento_id del calendario_evento
-										errCalendarioEvento := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento?query=TipoEventoId__Id:"+idOld+",Activo:true&limit=0", &calendarioEvento)
-										if errCalendarioEvento == nil {
-											if calendarioEvento != nil && calendarioEvento[0]["Id"] != nil {
-												idCalendarioEventoOld := fmt.Sprintf("%v", calendarioEvento[0]["Id"])
-												for _, cEvento := range calendarioEvento {
-
-													cEvento["Id"] = 0
-													cEvento["TipoEventoId"] = tEvento
-
-													errCalendarioEventoPost := request.SendJson(beego.AppConfig.String("EventoService")+"/calendario_evento", "POST", &resultadoPost, cEvento)
-													if errCalendarioEventoPost == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
-														if resultadoPost["Status"] != 400 {
-
-															//validar si existe relcion de responsables, tabla rompimiento calendario_evento_tipo_publico y tipo_publico
-															errCalendarioEventoTipoPublico := request.GetJson(beego.AppConfig.String("EventoService")+"calendario_evento_tipo_publico?query=CalendarioEventoId__Id:"+idCalendarioEventoOld+",Activo:true&limit=0", &calendarioEventoTipoPublico)
-															if errCalendarioEventoTipoPublico == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
-																if resultadoPost["Status"] == nil {
-																	for _, cEventoTipoPublico := range calendarioEventoTipoPublico {
-																		tipoPublicoOld := fmt.Sprintf("%.f", cEventoTipoPublico["TipoPublicoId"].(map[string]interface{})["Id"].(float64))
-																		errTipoPublico := request.GetJson(beego.AppConfig.String("EventoService")+"tipo_publico/"+tipoPublicoOld, &tipoPublico)
-																		if errTipoPublico == nil && fmt.Sprintf("%v", resultadoPost["System"]) != "map[]" && resultadoPost["Id"] != nil {
-																			if resultadoPost["Status"] == nil {
-
-																				cEventoTipoPublico["Id"] = 0
-																				cEventoTipoPublico["CalendarioEventoId"] = resultadoPost
-																				cEventoTipoPublico["TipoPublicoId"] = tipoPublico
-
-																				errCalendarioEventoPost := request.SendJson(beego.AppConfig.String("EventoService")+"/calendario_evento_tipo_publico", "POST", &resultadoPostResponsable, cEventoTipoPublico)
-																				if errCalendarioEventoPost == nil && fmt.Sprintf("%v", resultadoPostResponsable["System"]) != "map[]" && resultadoPostResponsable["Id"] != nil {
-																					if resultadoPost["Status"] != 400 {
-																						// fmt.Println("calendario_evento nuevo: ", resultadoPostResponsable["Id"])
-																					}
-																				}
-
-																			}
-																		} else {
-																			fmt.Println("error get tipo_publico", errTipoPublico)
-																			logs.Error(errTipoPublico.Error())
-																			return nil, errors.New("error del servicio PostCalendarioExtension: error get tipo_publico")
-																		}
-																	}
-																	return requestresponse.APIResponseDTO(true, 200, nil), nil
-
-																}
-															} else {
-																//errorGetAll = true
-																fmt.Println("error get calend_evento_tipo_pub", errCalendarioEventoTipoPublico)
-																logs.Error(errCalendarioEventoTipoPublico.Error())
-																return nil, errors.New("error del servicio PostCalendarioExtension: error get calend_evento_tipo_pub")
-															}
-														}
-													} else {
-														fmt.Println("error post calend event", errCalendarioEventoPost)
-														logs.Error(errCalendarioEventoPost.Error())
-														return nil, errors.New("error del servicio PostCalendarioExtension: error post calend event")
-													}
-
-												}
-											}
-										} else {
-											//errorGetAll = true
-											fmt.Println("error get calend_evento", errCalendarioEvento)
-											logs.Error(errCalendarioEvento.Error())
-											return nil, errors.New("error del servicio PostCalendarioExtension: error get calend_evento")
-										}
-									}
-								} else {
-									//errorGetAll = true
-									fmt.Println("error put evento", errTipoEventoPost)
-									logs.Error(errTipoEventoPost.Error())
-									return nil, errors.New("error del servicio PostCalendarioExtension: error put evento")
-								}
-
-							}
-
-						} else {
-							return requestresponse.APIResponseDTO(true, 200, nil, "ok pero no eventos"), nil
-						}
-					} else {
-						fmt.Println("error get eventos", errTipoEvento)
-						logs.Error(errTipoEvento.Error())
-						return nil, errors.New("error del servicio PostCalendarioExtension: error get eventos")
-					}
-
-				} else {
-					fmt.Println("error put calend padre extension", errCalendarioExtCrear)
-					logs.Error(errCalendarioExtCrear.Error())
-					return nil, errors.New("error del servicio PostCalendarioExtension: error put calend padre extension")
-				}
-			} else {
-				fmt.Println("error get calend padre")
-				return nil, errors.New("error del servicio PostCalendarioExtension: error get calend padre")
-			}
-		} else {
-			fmt.Println("error get calend padre", errCalendarioPadre)
-			return nil, errors.New("error del servicio PostCalendarioExtension: error get calend padre")
+func prepararActividadesClonacion(actividades []map[string]interface{}) {
+	sort.SliceStable(actividades, func(i, j int) bool {
+		catalogoI := idRelacionOrden(actividades[i]["EventoCatalogoId"])
+		catalogoJ := idRelacionOrden(actividades[j]["EventoCatalogoId"])
+		if catalogoI != catalogoJ {
+			return catalogoI < catalogoJ
 		}
-	} else {
-		fmt.Println("error body")
-		return nil, errors.New("error del servicio PostCalendarioExtension: error body")
+		ocurrenciaI, okI := helpers.InterfaceToInt(actividades[i]["NumeroOcurrencia"])
+		ocurrenciaJ, okJ := helpers.InterfaceToInt(actividades[j]["NumeroOcurrencia"])
+		if okI && okJ && ocurrenciaI != ocurrenciaJ {
+			return ocurrenciaI < ocurrenciaJ
+		}
+		return idRelacionOrden(actividades[i]["Id"]) < idRelacionOrden(actividades[j]["Id"])
+	})
+
+	for indice, actividad := range actividades {
+		fecha := fechaBaseClonacion.AddDate(0, 0, indice).Format("2006-01-02T15:04:05-07:00")
+		actividad["FechaInicio"] = fecha
+		actividad["FechaFin"] = fecha
+		delete(actividad, "NumeroOcurrencia")
 	}
-	return nil, errors.New("error del servicio PostCalendarioExtension: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
+}
+
+func idRelacionOrden(valor interface{}) int {
+	if id, ok := helpers.InterfaceToInt(valor); ok {
+		return id
+	}
+	id, err := helpers.RelationIDToString(valor)
+	if err != nil {
+		return 0
+	}
+	resultado, _ := strconv.Atoi(id)
+	return resultado
+}
+
+func calendarioDestinoClonacion(dataPost map[string]interface{}) (string, error) {
+	if id, ok := dataPost["Id"].(float64); ok && id > 0 {
+		return fmt.Sprintf("%.f", id), nil
+	}
+	periodoID := fmt.Sprintf("%.f", dataPost["PeriodoId"].(float64))
+	nivelID := fmt.Sprintf("%.f", dataPost["Nivel"].(float64))
+	existe, err := calendarioActivoPorPeriodoNivel(periodoID, nivelID)
+	if err != nil {
+		return "", errors.New("error del servicio PostCalendarioPadre: no fue posible validar calendario existente")
+	}
+	if existe {
+		return "", errors.New("Ya existe un calendario activo para el periodo y nivel seleccionados")
+	}
+	calendarioNuevo := map[string]interface{}{
+		"Nombre":            dataPost["Nombre"],
+		"DependenciaId":     `{"proyectos":[]}`,
+		"DocumentoId":       dataPost["DocumentoId"],
+		"PeriodoId":         dataPost["PeriodoId"],
+		"AplicacionId":      0,
+		"Nivel":             dataPost["Nivel"],
+		"Activo":            dataPost["Activo"],
+		"FechaCreacion":     time_bogota.TiempoBogotaFormato(),
+		"FechaModificacion": time_bogota.TiempoBogotaFormato(),
+	}
+	var resultado map[string]interface{}
+	if err := request.SendJson(beego.AppConfig.String("EventoService")+"calendario", "POST", &resultado, calendarioNuevo); err != nil {
+		return "", errors.New("error del servicio PostCalendarioPadre: no fue posible crear calendario destino")
+	}
+	id, ok := resultado["Id"].(float64)
+	if !ok || id <= 0 || resultado["Status"] == 400 || resultado["Type"] == "error" {
+		return "", errors.New("error del servicio PostCalendarioPadre: no fue posible crear calendario destino")
+	}
+	return fmt.Sprintf("%.f", id), nil
 }

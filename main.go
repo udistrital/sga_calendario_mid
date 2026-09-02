@@ -10,7 +10,7 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/plugins/cors"
-	"github.com/udistrital/auditoria"
+	"github.com/udistrital/utils_oas/auditoria"
 	"github.com/udistrital/utils_oas/xray"
 )
 
